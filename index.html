@@ -6,245 +6,295 @@
 <title>Link HR — Enquiry to Bill Management</title>
 <style>
 :root{
-  --navy:#1a237e;--navy2:#283593;--accent:#1565C0;--accent2:#0d47a1;
-  --teal:#00695c;--teal2:#004d40;--purple:#6a1b9a;
-  --green:#2e7d32;--red:#c62828;--orange:#e65100;--amber:#f57f17;--pink:#ad1457;
-  --bg:#eef2f7;--card:#fff;--border:#d8dee9;
-  --t1:#1a2340;--t2:#445a7c;--t3:#8899b4;
-  --sh:0 2px 16px rgba(26,35,126,.09);--sh2:0 8px 32px rgba(26,35,126,.14);
-  --r:12px;
+  --primary:#1e40af;--primary-h:#1d4ed8;--primary-d:#1e3a8a;
+  --teal:#0d9488;--teal-h:#0f766e;
+  --green:#16a34a;--green-h:#15803d;
+  --red:#dc2626;--red-h:#b91c1c;
+  --orange:#ea580c;--orange-h:#c2410c;
+  --purple:#7c3aed;--amber:#d97706;--pink:#be185d;
+  --bg:#f1f5f9;--bg2:#e2e8f0;--card:#ffffff;--border:#e2e8f0;--border2:#cbd5e1;
+  --t1:#0f172a;--t2:#334155;--t3:#64748b;--t4:#94a3b8;
+  --sh:0 1px 3px rgba(0,0,0,.08),0 4px 16px rgba(0,0,0,.06);
+  --sh2:0 4px 24px rgba(0,0,0,.10),0 1px 4px rgba(0,0,0,.06);
+  --sh3:0 8px 40px rgba(30,64,175,.14);
+  --r:10px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--t1);font-size:14px}
-a{color:var(--accent);text-decoration:none}
+body{font-family:'Segoe UI',Inter,system-ui,sans-serif;background:var(--bg);color:var(--t1);font-size:15px;}
+a{color:var(--primary);text-decoration:none}
 
 /* ── LOGIN ── */
 .lw{min-height:100vh;display:flex;align-items:center;justify-content:center;
-  background:linear-gradient(135deg,#0d1b6e 0%,#1565c0 55%,#00695c 100%)}
-.lc{background:#fff;border-radius:20px;padding:44px 40px 36px;width:390px;box-shadow:0 24px 64px rgba(0,0,0,.3)}
-.lc img{display:block;height:72px;object-fit:contain;margin:0 auto 12px}
-.lc h1{text-align:center;font-size:19px;font-weight:800;color:var(--navy)}
-.lc p.sub{text-align:center;font-size:12px;color:var(--t3);margin:3px 0 24px}
-.lerr{background:#ffebee;color:var(--red);border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:14px;display:none;border-left:3px solid var(--red)}
-.fld{margin-bottom:15px}
-.fld label{font-size:11px;font-weight:700;color:var(--t2);display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em}
-.fld input,.fld select{width:100%;border:2px solid var(--border);border-radius:9px;padding:11px 14px;font-size:14px;outline:none;transition:border .2s;background:#fff;color:var(--t1);font-family:inherit}
-.fld input:focus,.fld select:focus{border-color:var(--accent)}
-.pw{position:relative}.pw input{padding-right:42px}
-.eye{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--t3);font-size:17px}
-.lbtn{width:100%;background:linear-gradient(135deg,var(--navy),var(--accent));color:#fff;border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px}
-.lbtn:hover{opacity:.9}
-.lhint{text-align:center;margin:14px 0 0;font-size:12px;color:var(--t3);cursor:pointer;padding:10px;border:1.5px dashed var(--border);border-radius:8px}
-.lhint:hover{background:var(--bg);border-color:var(--accent)}
-.lhint code{color:var(--accent);font-weight:700}
-.lfoot{text-align:center;font-size:11px;color:var(--t3);margin-top:16px}
+  background:linear-gradient(150deg,#eff6ff 0%,#f1f5f9 50%,#f0fdf4 100%);}
+.lc{background:#fff;border-radius:20px;padding:44px 40px 36px;width:420px;
+  box-shadow:0 8px 48px rgba(30,64,175,.12),0 1px 4px rgba(0,0,0,.06);
+  border:1px solid #e2e8f0}
+.lc img{display:block;height:72px;object-fit:contain;margin:0 auto 14px}
+.lc h1{text-align:center;font-size:21px;font-weight:800;color:var(--primary-d)}
+.lc p.sub{text-align:center;font-size:13px;color:var(--t3);margin:4px 0 26px}
+.lerr{background:#fef2f2;color:#dc2626;border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:14px;display:none;border-left:3px solid #dc2626}
+.fld{margin-bottom:16px}
+.fld label{font-size:11px;font-weight:700;color:var(--t2);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em}
+.fld input,.fld select{width:100%;border:1.5px solid var(--border2);border-radius:9px;padding:11px 14px;font-size:15px;outline:none;transition:all .2s;background:#fff;color:var(--t1);font-family:inherit}
+.fld input:focus,.fld select:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(30,64,175,.1)}
+.fld input::placeholder{color:var(--t4)}
+.pw{position:relative}.pw input{padding-right:44px}
+.eye{position:absolute;right:13px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--t4);font-size:17px;transition:color .2s}
+.eye:hover{color:var(--t2)}
+.lbtn{width:100%;background:var(--primary);color:#fff;border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:700;cursor:pointer;margin-top:6px;letter-spacing:.02em;
+  box-shadow:0 4px 16px rgba(30,64,175,.3);transition:all .2s}
+.lbtn:hover{background:var(--primary-h);transform:translateY(-1px);box-shadow:0 6px 24px rgba(30,64,175,.4)}
+.lbtn:active{transform:translateY(0)}
+.lhint{text-align:center;margin:14px 0 0;font-size:12px;color:var(--t3);cursor:pointer;padding:10px;border:1.5px dashed var(--border2);border-radius:9px;transition:all .2s;background:#f8fafc}
+.lhint:hover{background:#eff6ff;border-color:var(--primary)}
+.lhint code{color:var(--primary);font-weight:700}
+.lfoot{text-align:center;font-size:11px;color:var(--t4);margin-top:16px}
 
 /* ── SHELL ── */
 .shell{display:none;height:100vh;overflow:hidden}
 .shell.show{display:flex}
-.sb{width:245px;min-width:245px;background:linear-gradient(180deg,#0d1b6e 0%,#1565c0 100%);
-  display:flex;flex-direction:column;height:100vh;overflow-y:auto;overflow-x:hidden;transition:width .25s}
-.sbh{padding:16px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,.1)}
-.sbh img{height:40px;object-fit:contain;background:#fff;border-radius:6px;padding:3px;flex-shrink:0}
+.sb{width:255px;min-width:255px;
+  background:linear-gradient(180deg,#1e3a8a 0%,#1e40af 60%,#1d4ed8 100%);
+  display:flex;flex-direction:column;height:100vh;overflow-y:auto;overflow-x:hidden;transition:width .25s;
+  box-shadow:4px 0 24px rgba(30,64,175,.18)}
+.sbh{padding:18px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(255,255,255,.12)}
+.sbh img{height:40px;object-fit:contain;background:#fff;border-radius:8px;padding:4px;flex-shrink:0}
 .sbh-t{flex:1;min-width:0}
-.sbh-t strong{display:block;font-size:12.5px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sbh-t span{font-size:10px;color:rgba(255,255,255,.45)}
-nav{flex:1;padding:10px 0}
-.nl{font-size:10px;font-weight:700;color:rgba(255,255,255,.3);letter-spacing:.08em;padding:14px 16px 4px;text-transform:uppercase}
-.ni{display:flex;align-items:center;gap:10px;padding:10px 16px;color:rgba(255,255,255,.65);cursor:pointer;border:none;background:none;width:100%;font-size:13px;font-weight:500;transition:all .15s;border-left:3px solid transparent;text-align:left}
-.ni svg{width:17px;height:17px;fill:currentColor;flex-shrink:0}
-.ni:hover{color:#fff;background:rgba(255,255,255,.08)}
-.ni.active{color:#fff;background:rgba(255,255,255,.15);border-left-color:#90caf9}
-.sbu{padding:12px 14px;border-top:1px solid rgba(255,255,255,.1);display:flex;align-items:center;gap:10px}
-.av{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--teal));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;flex-shrink:0}
+.sbh-t strong{display:block;font-size:13px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sbh-t span{font-size:10px;color:rgba(255,255,255,.5);letter-spacing:.04em}
+nav{flex:1;padding:8px 0}
+.nl{font-size:10px;font-weight:700;color:rgba(255,255,255,.4);letter-spacing:.1em;padding:16px 18px 5px;text-transform:uppercase}
+.ni{display:flex;align-items:center;gap:11px;padding:10px 18px;color:rgba(255,255,255,.7);cursor:pointer;border:none;background:none;width:100%;font-size:14px;font-weight:500;transition:all .15s;border-left:3px solid transparent;text-align:left}
+.ni svg{width:18px;height:18px;fill:currentColor;flex-shrink:0;opacity:.8}
+.ni:hover{color:#fff;background:rgba(255,255,255,.1);border-left-color:rgba(255,255,255,.4)}
+.ni.active{color:#fff;background:rgba(255,255,255,.15);border-left-color:#93c5fd;font-weight:700}
+.sbu{padding:14px 16px;border-top:1px solid rgba(255,255,255,.12);display:flex;align-items:center;gap:11px}
+.av{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.2);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;flex-shrink:0;border:2px solid rgba(255,255,255,.3)}
 .sbu-i{flex:1;min-width:0}
-.sbu-i strong{display:block;font-size:12.5px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sbu-i span{font-size:10px;color:rgba(255,255,255,.4);text-transform:uppercase}
-.sbb{background:none;border:none;color:rgba(255,255,255,.4);cursor:pointer;padding:5px;border-radius:6px;display:flex}
-.sbb:hover{color:#fff;background:rgba(255,255,255,.1)}
+.sbu-i strong{display:block;font-size:13px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sbu-i span{font-size:10px;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.04em}
+.sbb{background:none;border:none;color:rgba(255,255,255,.45);cursor:pointer;padding:6px;border-radius:7px;display:flex;transition:all .15s}
+.sbb:hover{color:#fff;background:rgba(255,255,255,.15)}
 .sbb svg{width:17px;height:17px;fill:currentColor}
 
 /* ── MAIN ── */
 .mn{flex:1;display:flex;flex-direction:column;overflow:hidden}
-.tb{background:#fff;border-bottom:1px solid var(--border);padding:0 22px;height:58px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 8px rgba(0,0,0,.05);flex-shrink:0;z-index:10}
-.tbtog{background:none;border:none;cursor:pointer;color:var(--t2);display:flex;padding:7px;border-radius:8px}
-.tbtog:hover{background:var(--bg)}
+.tb{background:#fff;border-bottom:1px solid var(--border);padding:0 24px;height:60px;
+  display:flex;align-items:center;gap:12px;flex-shrink:0;z-index:10;
+  box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.tbtog{background:none;border:none;cursor:pointer;color:var(--t3);display:flex;padding:8px;border-radius:8px;transition:all .15s}
+.tbtog:hover{background:var(--bg);color:var(--t1)}
 .tbtog svg{width:22px;height:22px;fill:currentColor}
 .tb-title{flex:1}
-.tb-title h2{font-size:16px;font-weight:800;color:var(--navy)}
+.tb-title h2{font-size:17px;font-weight:800;color:var(--t1)}
 .tb-title p{font-size:11px;color:var(--t3)}
-.pa{flex:1;overflow-y:auto;padding:22px}
+.pa{flex:1;overflow-y:auto;padding:24px;
+  scrollbar-width:thin;scrollbar-color:var(--border2) transparent}
+.pa::-webkit-scrollbar{width:6px}
+.pa::-webkit-scrollbar-track{background:transparent}
+.pa::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+.pa::-webkit-scrollbar-track{background:transparent}
 
 /* ── STAT CARDS ── */
-.sg{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:22px}
-.sc{background:#fff;border-radius:var(--r);box-shadow:var(--sh);padding:18px;position:relative;overflow:hidden;cursor:pointer;transition:transform .15s}
-.sc:hover{transform:translateY(-2px);box-shadow:var(--sh2)}
-.sc::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;border-radius:var(--r) var(--r) 0 0}
-.sc.c1::before{background:linear-gradient(90deg,#1565c0,#42a5f5)}
-.sc.c2::before{background:linear-gradient(90deg,#e65100,#ff9800)}
-.sc.c3::before{background:linear-gradient(90deg,#00695c,#26a69a)}
-.sc.c4::before{background:linear-gradient(90deg,#6a1b9a,#ab47bc)}
-.sc.c5::before{background:linear-gradient(90deg,#2e7d32,#66bb6a)}
-.sc.c6::before{background:linear-gradient(90deg,#c62828,#ef5350)}
-.sc.c7::before{background:linear-gradient(90deg,#ad1457,#f06292)}
-.sc-ic{font-size:22px;margin-bottom:10px}
-.sc-l{font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.05em}
-.sc-v{font-size:28px;font-weight:800;color:var(--navy);margin-top:3px;line-height:1}
+.sg{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:16px;margin-bottom:24px}
+.sc{background:#fff;border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--sh);
+  padding:20px;position:relative;overflow:hidden;cursor:pointer;transition:all .18s}
+.sc:hover{transform:translateY(-2px);box-shadow:var(--sh2);border-color:var(--border2)}
+.sc::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:var(--r) var(--r) 0 0}
+.sc.c1::before{background:linear-gradient(90deg,#1e40af,#3b82f6)}
+.sc.c2::before{background:linear-gradient(90deg,#ea580c,#fb923c)}
+.sc.c3::before{background:linear-gradient(90deg,#0d9488,#34d399)}
+.sc.c4::before{background:linear-gradient(90deg,#7c3aed,#a78bfa)}
+.sc.c5::before{background:linear-gradient(90deg,#16a34a,#4ade80)}
+.sc.c6::before{background:linear-gradient(90deg,#dc2626,#f87171)}
+.sc.c7::before{background:linear-gradient(90deg,#be185d,#f472b6)}
+.sc-ic{font-size:22px;margin-bottom:10px;opacity:.8}
+.sc-l{font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.06em}
+.sc-v{font-size:28px;font-weight:800;color:var(--t1);margin-top:3px;line-height:1}
 
 /* ── CARD ── */
-.card{background:#fff;border-radius:var(--r);box-shadow:var(--sh);padding:20px}
-.card-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}
-.card-hd h3{font-size:14px;font-weight:700;color:var(--navy)}
-.ph{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px}
-.ph h2{font-size:19px;font-weight:800;color:var(--navy)}
-.ph-sub{font-size:12px;color:var(--t3);margin-top:2px}
-.ph-act{display:flex;gap:8px;flex-wrap:wrap}
+.card{background:#fff;border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--sh);padding:22px}
+.card-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px}
+.card-hd h3{font-size:15px;font-weight:700;color:var(--t1)}
+.ph{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:10px}
+.ph h2{font-size:21px;font-weight:800;color:var(--t1)}
+.ph-sub{font-size:13px;color:var(--t3);margin-top:3px}
+.ph-act{display:flex;gap:9px;flex-wrap:wrap}
 
 /* ── TABLE ── */
-.tw{overflow-x:auto;border-radius:8px}
-table{width:100%;border-collapse:collapse;font-size:13px}
-th{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:11px 13px;text-align:left;white-space:nowrap}
-td{padding:10px 13px;border-bottom:1px solid var(--border);vertical-align:middle}
-tr:hover td{background:#f0f4ff}
+.tw{overflow-x:auto;border-radius:8px;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{background:#f8fafc;color:var(--t2);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;padding:12px 14px;text-align:left;white-space:nowrap;border-bottom:1px solid var(--border)}
+td{padding:11px 14px;border-bottom:1px solid var(--border);vertical-align:middle;color:var(--t1)}
+tr:hover td{background:#f8fafc}
 tr:last-child td{border-bottom:none}
-.act{display:flex;gap:5px;flex-wrap:wrap}
-.ib{background:none;border:1.5px solid var(--border);border-radius:7px;padding:5px 10px;cursor:pointer;font-size:12px;display:inline-flex;align-items:center;gap:4px;color:var(--t2);transition:all .15s;font-weight:600;white-space:nowrap;font-family:inherit}
-.ib:hover{background:var(--bg);border-color:var(--accent);color:var(--accent)}
-.ib.rd:hover{border-color:var(--red);color:var(--red)}
-.ib.gr:hover{border-color:var(--green);color:var(--green)}
+.act{display:flex;gap:6px;flex-wrap:wrap}
+.ib{background:#fff;border:1.5px solid var(--border2);border-radius:7px;padding:5px 13px;cursor:pointer;font-size:12px;display:inline-flex;align-items:center;gap:5px;color:var(--t2);transition:all .15s;font-weight:600;white-space:nowrap;font-family:inherit;height:30px}
+.ib:hover{background:var(--primary);border-color:var(--primary);color:#fff}
+.ib.rd{color:var(--red);border-color:#fecaca}
+.ib.rd:hover{background:var(--red);border-color:var(--red);color:#fff}
+.ib.gr{color:var(--green);border-color:#bbf7d0}
+.ib.gr:hover{background:var(--green);border-color:var(--green);color:#fff}
+.ib.or{color:var(--orange);border-color:#fed7aa}
+.ib.or:hover{background:var(--orange);border-color:var(--orange);color:#fff}
+.ib.tl{color:var(--teal);border-color:#99f6e4}
+.ib.tl:hover{background:var(--teal);border-color:var(--teal);color:#fff}
 
 /* ── BADGES ── */
-.bdg{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap}
-.bNew{background:#e3f2fd;color:#0d47a1}.bPend{background:#fff3e0;color:#bf360c}
-.bPI{background:#f3e5f5;color:#4a148c}.bDone{background:#e8f5e9;color:#1b5e20}
-.bReg{background:#e0f2f1;color:#004d40}.bConv{background:#fce4ec;color:#880e4f}
-.bRej{background:#ffebee;color:#b71c1c}.bActive{background:#e8f5e9;color:#1b5e20}
+.bdg{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap}
+.bNew{background:#dbeafe;color:#1e40af}.bPend{background:#fff7ed;color:#c2410c}
+.bPI{background:#f3e8ff;color:#6d28d9}.bDone{background:#dcfce7;color:#15803d}
+.bReg{background:#ccfbf1;color:#0f766e}.bConv{background:#fce7f3;color:#be185d}
+.bRej{background:#fee2e2;color:#dc2626}.bActive{background:#dcfce7;color:#15803d}
 
 /* ── TOOLBAR ── */
-.tbar{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap}
-.srch{flex:1;min-width:180px;max-width:300px;position:relative}
-.srch input{width:100%;padding:9px 13px 9px 34px;border:2px solid var(--border);border-radius:9px;font-size:13px;outline:none;font-family:inherit}
-.srch input:focus{border-color:var(--accent)}
-.srch::before{content:'🔍';position:absolute;left:9px;top:50%;transform:translateY(-50%);font-size:13px}
-.fsel{padding:9px 12px;border:2px solid var(--border);border-radius:9px;font-size:13px;outline:none;background:#fff;cursor:pointer;font-family:inherit}
-.fsel:focus{border-color:var(--accent)}
-.btn{padding:9px 16px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;border:none;display:inline-flex;align-items:center;gap:6px;transition:all .15s;font-family:inherit;white-space:nowrap}
-.badd{background:linear-gradient(135deg,var(--navy),var(--accent));color:#fff;box-shadow:0 3px 10px rgba(21,101,192,.3)}
-.badd:hover{opacity:.9;transform:translateY(-1px)}
-.bout{background:#fff;border:2px solid var(--border);color:var(--t2)}
-.bout:hover{border-color:var(--accent);color:var(--accent)}
-.bexp{background:linear-gradient(135deg,var(--green),#43a047);color:#fff}
-.bexp:hover{opacity:.9}
-.bteal{background:linear-gradient(135deg,var(--teal),#26a69a);color:#fff}
-.borg{background:linear-gradient(135deg,var(--orange),#ff9800);color:#fff}
+.tbar{display:flex;align-items:center;gap:9px;margin-bottom:16px;flex-wrap:wrap}
+.srch{flex:1;min-width:190px;max-width:320px;position:relative}
+.srch input{width:100%;padding:9px 14px 9px 36px;border:1.5px solid var(--border2);border-radius:8px;font-size:14px;outline:none;font-family:inherit;background:#fff;color:var(--t1);transition:all .18s}
+.srch input:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(30,64,175,.1)}
+.srch input::placeholder{color:var(--t4)}
+.srch::before{content:'🔍';position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:13px}
+.fsel{padding:9px 13px;border:1.5px solid var(--border2);border-radius:8px;font-size:14px;outline:none;background:#fff;cursor:pointer;font-family:inherit;color:var(--t1);transition:all .18s}
+.fsel:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(30,64,175,.1)}
+.fsel option{background:#fff;color:var(--t1)}
+.btn{padding:9px 18px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;border:none;display:inline-flex;align-items:center;gap:7px;transition:all .15s;font-family:inherit;white-space:nowrap;letter-spacing:.01em}
+.badd{background:var(--primary);color:#fff;box-shadow:0 2px 8px rgba(30,64,175,.3)}
+.badd:hover{background:var(--primary-h);transform:translateY(-1px);box-shadow:0 4px 16px rgba(30,64,175,.4)}
+.badd:active{transform:translateY(0)}
+.bout{background:#fff;border:1.5px solid var(--border2);color:var(--t2)}
+.bout:hover{border-color:var(--primary);color:var(--primary);background:#eff6ff}
+.bexp{background:var(--green);color:#fff;box-shadow:0 2px 8px rgba(22,163,74,.25)}
+.bexp:hover{background:var(--green-h);transform:translateY(-1px)}
+.bteal{background:var(--teal);color:#fff;box-shadow:0 2px 8px rgba(13,148,136,.25)}
+.bteal:hover{background:var(--teal-h);transform:translateY(-1px)}
+.borg{background:var(--orange);color:#fff;box-shadow:0 2px 8px rgba(234,88,12,.25)}
+.borg:hover{background:var(--orange-h);transform:translateY(-1px)}
 
 /* ── MODAL ── */
-.mbg{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:500;padding:16px;backdrop-filter:blur(2px)}
-.mb{background:#fff;border-radius:16px;width:100%;max-width:640px;max-height:93vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,.25)}
+.mbg{position:fixed;inset:0;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;z-index:500;padding:16px;backdrop-filter:blur(4px)}
+.mb{background:#fff;border-radius:14px;width:100%;max-width:640px;max-height:93vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,.18),0 4px 16px rgba(0,0,0,.08)}
 .mb.lg{max-width:880px}.mb.xl{max-width:1060px}
-.mh{padding:18px 22px;background:linear-gradient(135deg,var(--navy),var(--accent));display:flex;align-items:center;justify-content:space-between}
-.mh h3{font-size:15px;font-weight:800;color:#fff}
-.mh button{background:rgba(255,255,255,.2);border:none;font-size:20px;cursor:pointer;color:#fff;line-height:1;padding:2px 8px;border-radius:6px}
-.mbody{padding:22px;overflow-y:auto;flex:1}
-.mft{padding:14px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;background:var(--bg)}
+.mh{padding:18px 24px;background:var(--primary);display:flex;align-items:center;justify-content:space-between}
+.mh h3{font-size:16px;font-weight:700;color:#fff}
+.mh button{background:rgba(255,255,255,.15);border:none;font-size:18px;cursor:pointer;color:rgba(255,255,255,.8);line-height:1;padding:3px 9px;border-radius:6px;transition:all .15s}
+.mh button:hover{background:rgba(255,255,255,.25);color:#fff}
+.mbody{padding:24px;overflow-y:auto;flex:1;
+  scrollbar-width:thin;scrollbar-color:var(--border2) transparent}
+.mbody::-webkit-scrollbar{width:5px}
+.mbody::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+.mft{padding:14px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:9px;background:#f8fafc}
 
 /* ── FORM ── */
-.fg{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.fg{display:grid;grid-template-columns:1fr 1fr;gap:15px}
 .fg.c3{grid-template-columns:1fr 1fr 1fr}
 .ff{display:flex;flex-direction:column;gap:5px}
 .ff.s2{grid-column:span 2}.ff.s3{grid-column:span 3}
-.ff label{font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.04em}
-.ff input,.ff select,.ff textarea{padding:10px 12px;border:2px solid var(--border);border-radius:8px;font-size:13px;outline:none;font-family:inherit;width:100%;background:#fff;color:var(--t1);transition:border .2s}
-.ff input:focus,.ff select:focus,.ff textarea:focus{border-color:var(--accent)}
-.ff input[readonly]{background:var(--bg);color:var(--t2)}
-.ff textarea{resize:vertical;min-height:76px}
-.fsec{font-size:12px;font-weight:800;color:var(--navy);margin:16px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--border);text-transform:uppercase;letter-spacing:.05em}
-.ubox{border:2px dashed var(--border);border-radius:10px;padding:18px;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg)}
-.ubox:hover{border-color:var(--accent);background:#e3f2fd}
+.ff label{font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em}
+.ff input,.ff select,.ff textarea{padding:10px 12px;border:1.5px solid var(--border2);border-radius:8px;font-size:14px;outline:none;font-family:inherit;width:100%;background:#fff;color:var(--t1);transition:all .18s}
+.ff input:focus,.ff select:focus,.ff textarea:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(30,64,175,.1)}
+.ff input[readonly]{background:#f8fafc;color:var(--t3)}
+.ff input::placeholder,.ff textarea::placeholder{color:var(--t4)}
+.ff select option{background:#fff;color:var(--t1)}
+.ff textarea{resize:vertical;min-height:80px}
+.fsec{font-size:11px;font-weight:700;color:var(--primary);margin:18px 0 11px;padding-bottom:7px;border-bottom:2px solid var(--border);text-transform:uppercase;letter-spacing:.07em}
+.ubox{border:2px dashed var(--border2);border-radius:10px;padding:20px;text-align:center;cursor:pointer;transition:all .18s;background:#f8fafc}
+.ubox:hover{border-color:var(--primary);background:#eff6ff}
 .ubox input{display:none}
-.ubox-ic{font-size:26px;margin-bottom:6px}
-.ubox-t{font-size:13px;color:var(--t2);font-weight:600}
-.ubox-s{font-size:11px;color:var(--t3);margin-top:3px}
-.fprev{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 13px;font-size:13px;display:flex;align-items:center;gap:9px;margin-top:7px}
-.fprev a{color:var(--accent);font-weight:600}
+.ubox-ic{font-size:28px;margin-bottom:7px;opacity:.6}
+.ubox-t{font-size:14px;color:var(--t2);font-weight:600}
+.ubox-s{font-size:11px;color:var(--t4);margin-top:4px}
+.fprev{background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:14px;display:flex;align-items:center;gap:10px;margin-top:8px}
+.fprev a{color:var(--primary);font-weight:600}
 
 /* ── TIMELINE ── */
 .tl{padding:6px 0}
-.tli{display:flex;gap:12px;padding:9px 0;position:relative}
-.tli::before{content:'';position:absolute;left:15px;top:34px;bottom:-9px;width:2px;background:var(--border)}
+.tli{display:flex;gap:13px;padding:10px 0;position:relative}
+.tli::before{content:'';position:absolute;left:15px;top:35px;bottom:-10px;width:1px;background:var(--border)}
 .tli:last-child::before{display:none}
 .tld{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;z-index:1}
-.tld.done{background:#e8f5e9}.tld.cur{background:#e3f2fd;box-shadow:0 0 0 4px rgba(25,118,210,.15)}.tld.wait{background:var(--bg)}
+.tld.done{background:#dcfce7;border:1px solid #bbf7d0}.tld.cur{background:#dbeafe;border:1px solid #bfdbfe;box-shadow:0 0 0 4px rgba(30,64,175,.08)}.tld.wait{background:var(--bg);border:1px solid var(--border2)}
 .tli-i{flex:1;padding-top:5px}
-.tli-i strong{font-size:13px;font-weight:700;display:block}
-.tli-i span{font-size:11px;color:var(--t3)}
+.tli-i strong{font-size:14px;font-weight:700;display:block;color:var(--t1)}
+.tli-i span{font-size:12px;color:var(--t3)}
 
 /* ── PROGRESS ── */
-.pt{background:var(--border);border-radius:20px;height:7px;overflow:hidden;margin:6px 0}
+.pt{background:var(--border);border-radius:20px;height:6px;overflow:hidden;margin:6px 0}
 .pf{height:100%;border-radius:20px;transition:width .4s}
-.p25{width:25%;background:linear-gradient(90deg,var(--orange),#ff9800)}
-.p50{width:50%;background:linear-gradient(90deg,var(--accent),#42a5f5)}
-.p75{width:75%;background:linear-gradient(90deg,var(--purple),#ab47bc)}
-.p100{width:100%;background:linear-gradient(90deg,var(--green),#43a047)}
+.p25{width:25%;background:linear-gradient(90deg,#ea580c,#fb923c)}
+.p50{width:50%;background:linear-gradient(90deg,#1e40af,#3b82f6)}
+.p75{width:75%;background:linear-gradient(90deg,#7c3aed,#a78bfa)}
+.p100{width:100%;background:linear-gradient(90deg,#16a34a,#4ade80)}
 
 /* ── INFO GRID ── */
-.ig{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px 18px;margin:10px 0}
-.ii label{font-size:10px;color:var(--t3);font-weight:700;display:block;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px}
-.ii span{font-size:13px;color:var(--t1);font-weight:600}
+.ig{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:11px 20px;margin:11px 0}
+.ii label{font-size:10px;color:var(--t3);font-weight:700;display:block;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
+.ii span{font-size:14px;color:var(--t1);font-weight:600}
 
 /* ── TOAST ── */
-.tw2{position:fixed;bottom:22px;right:22px;display:flex;flex-direction:column;gap:9px;z-index:999}
-.tst{padding:12px 16px;border-radius:10px;color:#fff;font-size:13px;font-weight:700;box-shadow:var(--sh2);animation:sli .25s ease;display:flex;align-items:center;gap:9px;min-width:230px}
-.tst.s{background:linear-gradient(135deg,var(--green),#43a047)}
-.tst.e{background:linear-gradient(135deg,var(--red),#ef5350)}
-.tst.i{background:linear-gradient(135deg,var(--accent),#42a5f5)}
-.tst.w{background:linear-gradient(135deg,var(--orange),#ff9800)}
+.tw2{position:fixed;bottom:24px;right:24px;display:flex;flex-direction:column;gap:9px;z-index:999}
+.tst{padding:13px 18px;border-radius:10px;color:#fff;font-size:14px;font-weight:600;
+  box-shadow:0 4px 24px rgba(0,0,0,.15);animation:sli .25s ease;display:flex;align-items:center;gap:10px;min-width:240px}
+.tst.s{background:var(--green)}
+.tst.e{background:var(--red)}
+.tst.i{background:var(--primary)}
+.tst.w{background:var(--orange)}
 @keyframes sli{from{opacity:0;transform:translateX(50px)}to{opacity:1;transform:translateX(0)}}
 
+/* ── LOADING OVERLAY ── */
+.loading-overlay{position:fixed;inset:0;background:rgba(15,23,42,.35);display:flex;align-items:center;justify-content:center;z-index:9999;backdrop-filter:blur(4px)}
+.loading-box{background:#fff;border:1px solid var(--border);border-radius:14px;padding:32px 40px;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,.12)}
+.loading-box .sp{width:44px;height:44px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 14px}
+.loading-box p{color:var(--t2);font-size:14px;font-weight:500}
+
 /* ── CHIP / TAG ── */
-.chip{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:var(--bg);color:var(--t2);margin:1px}
-.divider{height:1px;background:var(--border);margin:14px 0}
-.pgn{display:flex;align-items:center;gap:7px;margin-top:14px;justify-content:center;flex-wrap:wrap}
-.pgb{padding:6px 12px;border:2px solid var(--border);border-radius:7px;background:#fff;cursor:pointer;font-size:12px;font-weight:600;transition:all .15s;font-family:inherit}
-.pgb:hover,.pgb.on{background:var(--accent);color:#fff;border-color:var(--accent)}
-.pgb:disabled{opacity:.4;cursor:not-allowed}
-.amt{font-family:'Courier New',monospace;font-weight:700}
-.sbo{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:299;display:none}
+.chip{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:#f1f5f9;color:var(--t2);margin:1px}
+.divider{height:1px;background:var(--border);margin:15px 0}
+.pgn{display:flex;align-items:center;gap:7px;margin-top:15px;justify-content:center;flex-wrap:wrap}
+.pgb{padding:6px 13px;border:1.5px solid var(--border2);border-radius:7px;background:#fff;cursor:pointer;font-size:13px;font-weight:600;transition:all .15s;font-family:inherit;color:var(--t2)}
+.pgb:hover,.pgb.on{background:var(--primary);color:#fff;border-color:var(--primary)}
+.pgb:disabled{opacity:.35;cursor:not-allowed}
+.amt{font-family:'Courier New',monospace;font-weight:700;color:var(--green)}
+.sbo{position:fixed;inset:0;background:rgba(15,23,42,.35);z-index:299;display:none}
 .sbo.show{display:block}
-.loading{text-align:center;padding:56px 0;color:var(--t3)}
-.sp{width:38px;height:38px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 12px}
+.loading{text-align:center;padding:60px 0;color:var(--t3)}
+.sp{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 13px}
 @keyframes spin{to{transform:rotate(360deg)}}
-.empty{text-align:center;padding:48px;color:var(--t3)}
-.empty-ic{font-size:44px;margin-bottom:10px}
-.two{display:grid;grid-template-columns:1fr 1fr;gap:18px}
-.three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.empty{text-align:center;padding:52px;color:var(--t3)}
+.empty-ic{font-size:46px;margin-bottom:11px;opacity:.4}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px}
 
 /* ── PUBLIC FORM PAGE ── */
-.pub-wrap{min-height:100vh;background:linear-gradient(135deg,#0d1b6e 0%,#1565c0 55%,#00695c 100%);display:flex;align-items:flex-start;justify-content:center;padding:30px 16px}
-.pub-card{background:#fff;border-radius:20px;width:100%;max-width:680px;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.3)}
-.pub-hd{background:linear-gradient(135deg,var(--navy),var(--accent));padding:28px 32px;display:flex;align-items:center;gap:16px}
-.pub-hd img{height:52px;object-fit:contain;background:#fff;border-radius:8px;padding:4px}
-.pub-hd-t h1{font-size:18px;font-weight:800;color:#fff}
+.pub-wrap{min-height:100vh;background:linear-gradient(150deg,#eff6ff 0%,#f1f5f9 60%,#f0fdf4 100%);display:flex;align-items:flex-start;justify-content:center;padding:30px 16px}
+.pub-card{background:#fff;border:1px solid var(--border);border-radius:16px;width:100%;max-width:680px;overflow:hidden;box-shadow:0 8px 48px rgba(30,64,175,.1)}
+.pub-hd{background:var(--primary);padding:28px 32px;display:flex;align-items:center;gap:16px}
+.pub-hd img{height:52px;object-fit:contain;background:#fff;border-radius:10px;padding:5px}
+.pub-hd-t h1{font-size:19px;font-weight:800;color:#fff}
 .pub-hd-t p{font-size:12px;color:rgba(255,255,255,.7);margin-top:3px}
 .pub-body{padding:32px}
 .pub-success{text-align:center;padding:40px 20px}
 .pub-success .ic{font-size:64px;margin-bottom:16px}
-.pub-success h2{font-size:20px;font-weight:800;color:var(--green);margin-bottom:8px}
+.pub-success h2{font-size:21px;font-weight:800;color:var(--green);margin-bottom:8px}
 .pub-success p{color:var(--t2);font-size:14px;line-height:1.6}
-.pub-id{background:var(--bg);border:2px solid var(--border);border-radius:10px;padding:14px 20px;margin:16px 0;font-size:15px;font-weight:800;color:var(--navy);letter-spacing:.04em}
-.srv-chk{display:flex;flex-direction:column;gap:8px}
-.srv-chk label{display:flex;align-items:center;gap:9px;cursor:pointer;font-size:13px;font-weight:500;padding:10px 12px;border:2px solid var(--border);border-radius:8px;transition:all .15s}
-.srv-chk label:hover{border-color:var(--accent);background:#f0f4ff}
-.srv-chk input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent);cursor:pointer}
-.srv-chk label.checked{border-color:var(--accent);background:#e3f2fd}
+.pub-id{background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px 20px;margin:16px 0;font-size:16px;font-weight:800;color:var(--primary);letter-spacing:.04em}
+.srv-chk{display:flex;flex-direction:column;gap:9px}
+.srv-chk label{display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;font-weight:500;padding:11px 14px;border:1.5px solid var(--border2);border-radius:9px;transition:all .15s;color:var(--t1)}
+.srv-chk label:hover{border-color:var(--primary);background:#eff6ff}
+.srv-chk input[type=checkbox]{width:16px;height:16px;accent-color:var(--primary);cursor:pointer}
+.srv-chk label.checked{border-color:var(--primary);background:#eff6ff;color:var(--primary-d)}
 
 @media(max-width:768px){
-  .sb{position:fixed;left:-245px;top:0;height:100vh;z-index:300;transition:left .25s}
+  .sb{position:fixed;left:-255px;top:0;height:100vh;z-index:300;transition:left .25s}
   .sb.open{left:0}.sbo.show{display:block}
   .two,.fg,.fg.c3,.three{grid-template-columns:1fr}
   .ff.s2,.ff.s3{grid-column:span 1}
-  .pa{padding:14px}.sg{grid-template-columns:1fr 1fr}
+  .pa{padding:16px}.sg{grid-template-columns:1fr 1fr}
 }
+/* ── INLINE HELPERS ── */
+strong[style*="color:var(--primary)"],strong[style*="color:var(--accent)"]{color:var(--primary)!important}
+span[style*="color:var(--teal)"],span[style*="color:var(--teal)"]{color:var(--teal)!important}
+span[style*="color:var(--green)"]{color:var(--green)!important}
+span[style*="color:rgba(255,193,7"]{color:var(--amber)!important}
 </style>
 </head>
 <body>
@@ -262,11 +312,12 @@ tr:last-child td{border-bottom:none}
         <div class="ff">
           <label>Choose Option *</label>
           <select id="peOption">
-            <option value="">Select...</option>
-            <option>Recruitment Process</option>
-            <option>HR Process &amp; Compliance</option>
-            <option>Payroll Process</option>
-            <option>Labour Compliance</option>
+            <option value="">Select service…</option>
+            <option>Google Automation</option>
+            <option>Recruitment</option>
+            <option>Pay Roll</option>
+            <option>Registration</option>
+            <option>Consultancy</option>
             <option>Other</option>
           </select>
         </div>
@@ -304,13 +355,14 @@ tr:last-child td{border-bottom:none}
       </div>
       <div class="fsec">Service Requirements</div>
       <div class="srv-chk">
-        <label><input type="checkbox" value="Recruitment Process" onchange="toggleChk(this)"> 🔍 Recruitment Process</label>
-        <label><input type="checkbox" value="HR Process & Compliance" onchange="toggleChk(this)"> 📋 HR Process &amp; Compliance</label>
-        <label><input type="checkbox" value="Payroll Process" onchange="toggleChk(this)"> 💰 Payroll Process</label>
-        <label><input type="checkbox" value="Labour Compliance" onchange="toggleChk(this)"> ⚖️ Labour Compliance</label>
+        <label><input type="checkbox" value="Google Automation" onchange="toggleChk(this)"> Google Automation</label>
+        <label><input type="checkbox" value="Recruitment" onchange="toggleChk(this)"> Recruitment</label>
+        <label><input type="checkbox" value="Pay Roll" onchange="toggleChk(this)"> Pay Roll</label>
+        <label><input type="checkbox" value="Registration" onchange="toggleChk(this)"> Registration</label>
+        <label><input type="checkbox" value="Consultancy" onchange="toggleChk(this)"> Consultancy</label>
       </div>
       <div style="margin-top:22px;display:flex;justify-content:flex-end;gap:10px">
-        <button class="btn badd" onclick="submitPubCli()">✅ Register as Client</button>
+        <button class="btn badd" onclick="submitPubCli()">Register as Client</button>
       </div>
       <p style="font-size:11px;color:var(--t3);margin-top:14px;text-align:center">Your information is safe with us.</p>
     </div>
@@ -362,7 +414,7 @@ tr:last-child td{border-bottom:none}
       <button class="ni" data-p="users" onclick="go('users')" id="niUsers" style="display:none"><svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 3-1.34 3-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5C15 14.17 10.33 13 8 13zm8 0c-.29 0-.62.02-.97.05C16.16 13.9 17 15.02 17 16.5V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>Users</button>
       <button class="ni" data-p="employees" onclick="go('employees')" id="niEmp" style="display:none"><svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>Employee Master</button>
       <button class="ni" data-p="cos" onclick="go('cos')" id="niCos" style="display:none"><svg viewBox="0 0 24 24"><path d="M12 7V3H2v18h20V7H12zM10 19H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 8h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10z"/></svg>Companies</button>
-      <div class="nl">🌐 Public Forms</div>
+      <div class="nl">Public Forms</div>
       <button class="ni" onclick="window.open('?form=enquiry','_blank')"><svg viewBox="0 0 24 24"><path d="M19 4H5c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.89-2-2-2zm0 14H5V8h14v10z"/></svg>Enquiry Form ↗</button>
       <button class="ni" onclick="window.open('?form=client','_blank')"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>Client Reg Form ↗</button>
     </nav>
@@ -421,7 +473,8 @@ function mapRequests(data){
     id:r.ReqID,clientId:r.ClientID,clientName:r.ClientName,
     clientMail:r.ClientMail,ccMail:r.CCMail,purpose:r.Purpose,
     amount:r.Amount,requestDate:r.RequestDate,byId:r.ByID,
-    byName:r.ByName,dept:r.Dept,status:r.Status,createdAt:r.CreatedAt,
+    byName:r.ByName,requestedByAdmin:r.RequestedByAdmin||'',
+    dept:r.Dept,status:r.Status,createdAt:r.CreatedAt,
     piNumber:r.pi?.PINumber||'',piDate:r.pi?.PIDate||'',piFile:null,
     invoiceCompany:r.invoice?.Company||'',tallyInv:r.invoice?.TallyInv||'',
     invoiceAmt:r.invoice?.AmountGST||0,invoiceDate:r.invoice?.InvoiceDate||'',
@@ -578,9 +631,21 @@ function rid(){return'BR-'+new Date().getFullYear()+'-'+String(REQUESTS.length+1
 
 function toast(m,t='i'){
   const w=document.getElementById('tw2'),d=document.createElement('div');
-  const ic={s:'✅',e:'❌',i:'ℹ️',w:'⚠️'};
-  d.className=`tst ${t}`;d.innerHTML=`<span>${ic[t]||'ℹ️'}</span><span>${esc(m)}</span>`;
+  const ic={s:'✓',e:'✕',i:'i',w:'!'};
+  d.className=`tst ${t}`;d.innerHTML=`<span>${ic[t]||'ℹ'}</span><span>${esc(m)}</span>`;
   w.appendChild(d);setTimeout(()=>d.remove(),3400);
+}
+function showLoading(msg='Processing…'){
+  let ov=document.getElementById('loadingOverlay');
+  if(!ov){ov=document.createElement('div');ov.id='loadingOverlay';ov.className='loading-overlay';
+    ov.innerHTML=`<div class="loading-box"><div class="sp"></div><p>${esc(msg)}</p></div>`;
+    document.body.appendChild(ov);}
+  else ov.querySelector('p').textContent=msg;
+  ov.style.display='flex';
+}
+function hideLoading(){
+  const ov=document.getElementById('loadingOverlay');
+  if(ov)ov.style.display='none';
 }
 function openM(title,body,foot='',sz=''){
   document.getElementById('mTitle').textContent=title;
@@ -709,11 +774,11 @@ async function doLogin(){
   const u=v('lgU'),p=v('lgP');
   if(!u||!p){showErr('lerr','Enter username and password');return}
   const btn=document.getElementById('lgBtn');
-  btn.textContent='Signing in…';btn.disabled=true;
+  btn.textContent='Signing in…';btn.disabled=true;showLoading('Authenticating…');
   // Try GAS login first
   if(GAS_OK){
     const res=await gasCall('login',{username:u,password:p});
-    btn.textContent='Sign In →';btn.disabled=false;
+    btn.textContent='Sign In →';btn.disabled=false;hideLoading();
     if(res.success){
       _sessionDead=false;
       SES={token:res.token,user:res.user};
@@ -727,12 +792,12 @@ async function doLogin(){
     // error instead of silently falling back to a tokenless offline session
     // (that fallback is what was causing every API call to report
     // "Session expired" right after a fallback login).
-    showErr('lerr',res.error||'Invalid username or password');
+    hideLoading();showErr('lerr',res.error||'Invalid username or password');
     return;
   }
   // GAS not connected at all — local offline-only credential check
   const f=USERS.find(x=>x.username===u&&x.password===p);
-  btn.textContent='Sign In →';btn.disabled=false;
+  btn.textContent='Sign In →';btn.disabled=false;hideLoading();
   if(f){
     SES={user:{id:f.id,username:f.username,name:f.name,role:f.role,dept:f.dept,email:f.email}};
     sessionStorage.setItem('lhr_ses',JSON.stringify(SES));
@@ -778,6 +843,7 @@ async function bootApp(){
     LS.r('lhr_enq'); LS.r('lhr_cli'); LS.r('lhr_req');
     ENQUIRIES=[]; CLIENTS=[]; REQUESTS=[];
     document.getElementById('pa').innerHTML='<div class="loading"><div class="sp"></div><p>Loading data from server…</p></div>';
+    showLoading('Loading data from server…');
     try{
       const [eRes,cRes,rRes]=await Promise.all([
         gasCall('getEnquiries',{}),
@@ -804,6 +870,8 @@ async function bootApp(){
     }catch(e){
       console.error('GAS load error:',e);
       toast('Server error: '+e.message,'e');
+    } finally {
+      hideLoading();
     }
   }
   go('dash');
@@ -839,43 +907,43 @@ function rDash(){
   const recent=[...ENQUIRIES].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)).slice(0,6);
   const recentReq=[...REQUESTS].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)).slice(0,5);
 
-  let h=`<div class="ph"><div><h2>Welcome, ${esc(u.name.split(' ')[0])}! 👋</h2><p class="ph-sub">Here's your complete workflow overview</p></div>
-  <button class="btn bout" onclick="testGAS()" style="border-color:var(--teal);color:var(--teal)">🔌 Test GAS</button>
-  <button class="btn bexp" onclick="xls([...ENQUIRIES,...REQUESTS].map(r=>({'ID':r.id||'','Company':r.company||r.clientName||'','Status':r.status,'Date':r.requestDate||r.createdAt})),'full_export')">⬇️ Export All</button></div>
+  let h=`<div class="ph"><div><h2>Welcome, ${esc(u.name.split(' ')[0])}</h2><p class="ph-sub">Your complete workflow overview for today</p></div>
+  <button class="btn bout" onclick="testGAS()" style="border-color:var(--teal);color:var(--teal);background:#f0fdfa">Test Connection</button>
+  <button class="btn bexp" onclick="xls([...ENQUIRIES,...REQUESTS].map(r=>({'ID':r.id||'','Company':r.company||r.clientName||'','Status':r.status,'Date':r.requestDate||r.createdAt})),'full_export')">Export All</button></div>
   <div class="sg">
-    <div class="sc c1" onclick="go('enq')"><div class="sc-ic">📋</div><div class="sc-l">Total Enquiries</div><div class="sc-v">${tEnq}</div></div>
-    <div class="sc c2" onclick="go('enq')"><div class="sc-ic">🆕</div><div class="sc-l">New Enquiries</div><div class="sc-v">${nEnq}</div></div>
-    <div class="sc c3" onclick="go('clients')"><div class="sc-ic">🏢</div><div class="sc-l">Clients Registered</div><div class="sc-v">${tCli}</div></div>
-    <div class="sc c6" onclick="go('${isAcc?'pi':'myreq'}')"><div class="sc-ic">⏳</div><div class="sc-l">Pending PI</div><div class="sc-v">${pPi}</div></div>
-    <div class="sc c4" onclick="go('${isAcc?'inv':'myreq'}')"><div class="sc-ic">📄</div><div class="sc-l">PI Created</div><div class="sc-v">${piC}</div></div>
-    <div class="sc c5"><div class="sc-ic">✅</div><div class="sc-l">Completed</div><div class="sc-v">${done}</div></div>
-    <div class="sc c7"><div class="sc-ic">💰</div><div class="sc-l">Total Billed</div><div class="sc-v" style="font-size:16px">${fmt(tAmt)}</div></div>
+    <div class="sc c1" onclick="go('enq')"><div class="sc-ic">&#9776;</div><div class="sc-l">Total Enquiries</div><div class="sc-v">${tEnq}</div></div>
+    <div class="sc c2" onclick="go('enq')"><div class="sc-ic">&#x2B;</div><div class="sc-l">New Enquiries</div><div class="sc-v">${nEnq}</div></div>
+    <div class="sc c3" onclick="go('clients')"><div class="sc-ic">&#9878;</div><div class="sc-l">Clients Registered</div><div class="sc-v">${tCli}</div></div>
+    <div class="sc c6" onclick="go('${isAcc?'pi':'myreq'}')"><div class="sc-ic">&#9202;</div><div class="sc-l">Pending PI</div><div class="sc-v">${pPi}</div></div>
+    <div class="sc c4" onclick="go('${isAcc?'inv':'myreq'}')"><div class="sc-ic">&#128196;</div><div class="sc-l">PI Created</div><div class="sc-v">${piC}</div></div>
+    <div class="sc c5"><div class="sc-ic">&#10003;</div><div class="sc-l">Completed</div><div class="sc-v">${done}</div></div>
+    <div class="sc c7"><div class="sc-ic">&#x20B9;</div><div class="sc-l">Total Billed</div><div class="sc-v" style="font-size:18px;color:var(--primary-d)">${fmt(tAmt)}</div></div>
   </div>
   <div class="two" style="margin-bottom:18px">
-  <div class="card"><div class="card-hd"><h3>📊 Flow Summary</h3></div>`;
+  <div class="card"><div class="card-hd"><h3>Flow Summary</h3></div>`;
   const steps=[['Enquiries',tEnq,'c1'],['Clients',tCli,'c3'],['Bill Requests',REQUESTS.length,'c4'],['Completed',done,'c5']];
   steps.forEach(([l,n,c])=>{const pct=tEnq?Math.round(n/tEnq*100):0;
-    h+=`<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:13px;font-weight:600">${l}</span><span style="font-size:13px;font-weight:700">${n}</span></div>
-    <div class="pt"><div class="pf" style="width:${Math.min(pct,100)}%;background:${c==='c1'?'var(--accent)':c==='c3'?'var(--teal)':c==='c4'?'var(--purple)':'var(--green)'}"></div></div></div>`;});
+    h+=`<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:13px;font-weight:600;color:var(--t1)">${l}</span><span style="font-size:13px;font-weight:700;color:var(--primary)">${n}</span></div>
+    <div class="pt"><div class="pf" style="width:${Math.min(pct,100)}%;background:${c==='c1'?'var(--primary)':c==='c3'?'var(--teal)':c==='c4'?'var(--purple)':'var(--green)'}"></div></div></div>`;});
   h+=`</div>
-  <div class="card"><div class="card-hd"><h3>⚡ Quick Actions</h3></div><div style="display:flex;flex-direction:column;gap:9px">
-    <button class="btn badd" onclick="enqForm()" style="justify-content:center">📝 New Enquiry</button>
-    <button class="btn bteal" onclick="go('clients')" style="justify-content:center">🏢 Client Master</button>
-    <button class="btn badd" onclick="go('newreq')" style="justify-content:center">💼 New Bill Request</button>
-    ${isAcc?`<button class="btn borg" onclick="go('pi')" style="justify-content:center">📄 Create PI</button>`:''}
-    <button class="btn bexp" onclick="go('rep')" style="justify-content:center">📊 Reports</button>
+  <div class="card"><div class="card-hd"><h3>Quick Actions</h3></div><div style="display:flex;flex-direction:column;gap:9px">
+    <button class="btn badd" onclick="enqForm()" style="justify-content:center">+ New Enquiry</button>
+    <button class="btn bteal" onclick="go('clients')" style="justify-content:center">Client Master</button>
+    <button class="btn badd" onclick="go('newreq')" style="justify-content:center">+ New Bill Request</button>
+    ${isAcc?`<button class="btn borg" onclick="go('pi')" style="justify-content:center">Create PI</button>`:''}
+    <button class="btn bexp" onclick="go('rep')" style="justify-content:center">Reports</button>
     <div style="border-top:1px solid var(--border);padding-top:9px;display:flex;gap:8px">
-      <a href="?form=enquiry" target="_blank" class="btn bteal" style="flex:1;justify-content:center;font-size:12px">🌐 Enquiry Form</a>
-      <a href="?form=client" target="_blank" class="btn borg" style="flex:1;justify-content:center;font-size:12px">📋 Client Form</a>
+      <a href="?form=enquiry" target="_blank" class="btn bteal" style="flex:1;justify-content:center;font-size:12px">Enquiry Form ↗</a>
+      <a href="?form=client" target="_blank" class="btn borg" style="flex:1;justify-content:center;font-size:12px">Client Form ↗</a>
     </div>
   </div></div></div>
   <div class="two">
-  <div class="card"><div class="card-hd"><h3>🕐 Recent Enquiries</h3><button class="btn bout" onclick="go('enq')" style="padding:5px 10px;font-size:12px">View All</button></div>
+  <div class="card"><div class="card-hd"><h3>Recent Enquiries</h3><button class="btn bout" onclick="go('enq')" style="padding:5px 10px;font-size:12px">View All</button></div>
   <div class="tw"><table><tr><th>Enq ID</th><th>Company</th><th>Status</th><th>Date</th></tr>`;
   if(!recent.length)h+=`<tr><td colspan="4" class="empty">No enquiries yet</td></tr>`;
   recent.forEach(r=>h+=`<tr style="cursor:pointer" onclick="viewEnq('${r.id}')"><td><strong style="color:var(--accent)">${esc(r.id)}</strong></td><td>${esc(r.company)}</td><td>${sBadge(r.status)}</td><td>${fd(r.createdAt)}</td></tr>`);
   h+=`</table></div></div>
-  <div class="card"><div class="card-hd"><h3>💼 Recent Bill Requests</h3><button class="btn bout" onclick="go('${isAcc?'allreq':'myreq'}')" style="padding:5px 10px;font-size:12px">View All</button></div>
+  <div class="card"><div class="card-hd"><h3>Recent Bill Requests</h3><button class="btn bout" onclick="go('${isAcc?'allreq':'myreq'}')" style="padding:5px 10px;font-size:12px">View All</button></div>
   <div class="tw"><table><tr><th>Req ID</th><th>Client</th><th>Amount</th><th>Status</th></tr>`;
   if(!recentReq.length)h+=`<tr><td colspan="4" class="empty">No requests yet</td></tr>`;
   recentReq.forEach(r=>h+=`<tr style="cursor:pointer" onclick="viewReq('${r.id}')"><td><strong style="color:var(--accent)">${esc(r.id)}</strong></td><td>${esc(r.clientName)}</td><td class="amt">${fmt(r.amount)}</td><td>${sBadge(r.status)}</td></tr>`);
@@ -908,10 +976,10 @@ function dEnq(){
   if(eSr)rows=rows.filter(r=>(r.id+r.company+r.mobile+r.email+r.contact).toLowerCase().includes(eSr.toLowerCase()));
   if(eSt)rows=rows.filter(r=>r.status===eSt);
   const {rows:pg,total,pages}=pg_fn(rows,eP);
-  const expD=rows.map(r=>({'Enquiry ID':r.id,'Company':r.company,'Contact':r.contact,'Mobile':r.mobile,'Email':r.email,'Option':r.option,'Requirement':r.requirement,'Status':r.status,'Date':fd(r.createdAt),'Source':r.source||'Internal'}));
+  const expD=rows.map(r=>({'Enquiry ID':r.id,'Company':r.company,'Contact':r.contact,'Mobile':r.mobile,'Email':r.email,'Service':r.option,'Requirement':r.requirement,'Status':r.status,'Date':fd(r.createdAt),'Source':r.source||'Internal'}));
   let h=`<div class="ph"><div><h2>Enquiries</h2><p class="ph-sub">${total} total enquiries</p></div>
   <div class="ph-act">
-    <button class="btn bexp" onclick="xls(${JSON.stringify(expD).replace(/'/g,"\\'")},'enquiries')">⬇️ Excel</button>
+    <button class="btn bexp" onclick="xls(${JSON.stringify(expD).replace(/'/g,"\\'")},'enquiries')">Export Excel</button>
     <button class="btn badd" onclick="enqForm()">+ New Enquiry</button>
   </div></div>
   <div class="card">
@@ -923,16 +991,17 @@ function dEnq(){
       <option>Converted</option><option>Closed</option>
     </select>
   </div>
-  <div class="tw"><table><tr><th>Enquiry ID</th><th>Company</th><th>Contact</th><th>Mobile</th><th>Email</th><th>Option</th><th>Status</th><th>Date</th><th>Actions</th></tr>`;
-  if(!pg.length)h+=`<tr><td colspan="9"><div class="empty"><div class="empty-ic">📭</div><p>No enquiries found</p></div></td></tr>`;
+  <div class="tw"><table><tr><th>Enquiry ID</th><th>Company</th><th>Contact</th><th>Mobile</th><th>Email</th><th>Service</th><th>Status</th><th>Date</th><th>Actions</th></tr>`;
+  if(!pg.length)h+=`<tr><td colspan="9"><div class="empty"><div class="empty-ic">&#8709;</div><p style="color:var(--t3);font-size:14px">No enquiries found</p></div></td></tr>`;
   pg.forEach(r=>{
     const canConv=r.status!=='Converted'&&r.status!=='Lost';
-    h+=`<tr><td><strong style="color:var(--accent)">${esc(r.id)}</strong></td><td>${esc(r.company)}</td><td>${esc(r.contact)}</td><td>${esc(r.mobile)}</td><td style="font-size:12px">${esc(r.email)}</td><td><span class="chip">${esc(r.option||'—')}</span></td><td>${sBadge(r.status)}</td><td>${fd(r.createdAt)}</td>
+    const dtStr=r.createdAt?new Date(r.createdAt).toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):fd(r.createdAt);
+    h+=`<tr><td><strong style="color:var(--primary);font-weight:700">${esc(r.id)}</strong></td><td>${esc(r.company)}</td><td>${esc(r.contact)}</td><td>${esc(r.mobile)}</td><td style="font-size:12px">${esc(r.email)}</td><td><span class="chip">${esc(r.option||'—')}</span></td><td>${sBadge(r.status)}</td><td style="font-size:12px">${dtStr}</td>
     <td><div class="act">
-      <button class="ib" onclick="viewEnq('${r.id}')">👁</button>
-      <button class="ib" onclick="enqForm('${r.id}')">✏️</button>
-      ${canConv?`<button class="ib gr" onclick="convToClient('${r.id}')">→ Client</button>`:''}
-      <button class="ib rd" onclick="delEnq('${r.id}')">🗑️</button>
+      <button class="ib tl" onclick="viewEnq('${r.id}')">View</button>
+      <button class="ib" onclick="enqForm('${r.id}')">Edit</button>
+      ${canConv?`<button class="ib gr" onclick="convToClient('${r.id}')">→ Convert</button>`:''}
+      <button class="ib rd" onclick="delEnq('${r.id}')">Delete</button>
     </div></td></tr>`;
   });
   h+=`</table></div>${pager(total,pages,eP,'epg')}</div>`;
@@ -946,12 +1015,13 @@ function enqForm(id=''){
   const r=id?ENQUIRIES.find(x=>x.id===id):{};const isE=!!r.id;
   openM(isE?`Edit Enquiry: ${id}`:'New Enquiry',`
   <div class="fg">
-    <div class="ff"><label>Choose Option *</label><select id="eOpt">
-      <option value="">Select...</option>
-      <option ${r.option==='Recruitment Process'?'selected':''}>Recruitment Process</option>
-      <option ${r.option==='HR Process & Compliance'?'selected':''}>HR Process &amp; Compliance</option>
-      <option ${r.option==='Payroll Process'?'selected':''}>Payroll Process</option>
-      <option ${r.option==='Labour Compliance'?'selected':''}>Labour Compliance</option>
+    <div class="ff"><label>Service Required *</label><select id="eOpt">
+      <option value="">Select service…</option>
+      <option ${r.option==='Google Automation'?'selected':''}>Google Automation</option>
+      <option ${r.option==='Recruitment'?'selected':''}>Recruitment</option>
+      <option ${r.option==='Pay Roll'?'selected':''}>Pay Roll</option>
+      <option ${r.option==='Registration'?'selected':''}>Registration</option>
+      <option ${r.option==='Consultancy'?'selected':''}>Consultancy</option>
       <option ${r.option==='Other'?'selected':''}>Other</option>
     </select></div>
     <div class="ff"><label>Status</label><select id="eStat">
@@ -977,7 +1047,9 @@ async function saveEnq(id){
   if(GAS_OK){
     const payload={option:opt,company:co,contact:ct,mobile:mb,email:em,status:st,requirement:rq};
     if(id) payload.id=id;
+    showLoading(id?'Updating enquiry…':'Saving enquiry…');
     const res=await gasCall('saveEnquiry',payload);
+    hideLoading();
     if(!res.success){toast('Save failed: '+(res.error||'unknown error'),'e');return}
     if(!id&&res.id) id=res.id;
     // Reload from GAS immediately after save
@@ -993,9 +1065,10 @@ async function saveEnq(id){
     ENQUIRIES[idx].statusHistory.push({status:st,by:SES.user.name,at:new Date().toISOString()});}
   } else {
     const nid=id||eid();
+    const now=new Date().toISOString();
     ENQUIRIES.push({id:nid,option:opt,company:co,contact:ct,mobile:mb,email:em,status:st||'New Enquiry',
-      requirement:rq,createdAt:new Date().toISOString(),createdBy:SES.user.id,source:'Internal',
-      statusHistory:[{status:st||'New Enquiry',by:SES.user.name,at:new Date().toISOString()}]});
+      requirement:rq,createdAt:now,updatedAt:now,createdBy:SES.user.id,source:'Internal',
+      statusHistory:[{status:st||'New Enquiry',by:SES.user.name,at:now}]});
   }
   sEnq();closeM();toast(id?'Enquiry updated':'Enquiry created','s');rEnq();
 }
@@ -1008,7 +1081,7 @@ function viewEnq(id){
   <div class="ii"><label>Contact Person</label><span>${esc(r.contact)}</span></div>
   <div class="ii"><label>Mobile</label><span>${esc(r.mobile)}</span></div>
   <div class="ii"><label>Email</label><span>${esc(r.email)}</span></div>
-  <div class="ii"><label>Service Option</label><span>${esc(r.option||'—')}</span></div>
+  <div class="ii"><label>Service</label><span>${esc(r.option||'—')}</span></div>
   <div class="ii"><label>Date</label><span>${fd(r.createdAt)}</span></div>
   <div class="ii"><label>Source</label><span>${esc(r.source||'Internal')}</span></div>
   ${r.linkedClientId?`<div class="ii"><label>Client ID</label><span style="color:var(--teal);font-weight:700">${esc(r.linkedClientId)}</span></div>`:''}
@@ -1016,7 +1089,7 @@ function viewEnq(id){
   ${r.requirement?`<div style="margin-top:10px"><div class="ii"><label>Requirement</label><span>${esc(r.requirement)}</span></div></div>`:''}
   <div class="fsec">Status History</div>
   <div class="tl">${(r.statusHistory||[]).map(h=>`<div class="tli"><div class="tld done">✅</div><div class="tli-i"><strong>${esc(h.status)}</strong><span>${fd(h.at)} • ${esc(h.by||'—')}</span></div></div>`).join('')}</div>`,
-  `<button class="btn bout" onclick="closeM()">Close</button><button class="btn badd" onclick="closeM();enqForm('${id}')">✏️ Edit</button>${r.status!=='Converted'?`<button class="btn bteal" onclick="closeM();convToClient('${id}')">→ Convert to Client</button>`:''}`,
+  `<button class="btn bout" onclick="closeM()">Close</button><button class="btn badd" onclick="closeM();enqForm('${id}')">✏️ Edit</button>${r.status!=='Converted'?`<button class="btn bteal" onclick="closeM();convToClient('${id}')">Convert to Client</button>`:''}`,
   'lg');
 }
 function delEnq(id){if(!confirm('Delete this enquiry?'))return;ENQUIRIES=ENQUIRIES.filter(x=>x.id!==id);sEnq();toast('Deleted','s');dEnq()}
@@ -1038,10 +1111,11 @@ function convToClient(enqId){
   </div>
   <div class="fsec">Service Requirements</div>
   <div class="srv-chk">
-    <label ${r.option==='Recruitment Process'?'class="checked"':''}><input type="checkbox" value="Recruitment Process" onchange="toggleChk(this)" ${r.option==='Recruitment Process'?'checked':''}> 🔍 Recruitment Process</label>
-    <label><input type="checkbox" value="HR Process & Compliance" onchange="toggleChk(this)"> 📋 HR Process &amp; Compliance</label>
-    <label><input type="checkbox" value="Payroll Process" onchange="toggleChk(this)"> 💰 Payroll Process</label>
-    <label><input type="checkbox" value="Labour Compliance" onchange="toggleChk(this)"> ⚖️ Labour Compliance</label>
+    <label><input type="checkbox" value="Google Automation" onchange="toggleChk(this)"> Google Automation</label>
+    <label><input type="checkbox" value="Recruitment" onchange="toggleChk(this)"> Recruitment</label>
+    <label><input type="checkbox" value="Pay Roll" onchange="toggleChk(this)"> Pay Roll</label>
+    <label><input type="checkbox" value="Registration" onchange="toggleChk(this)"> Registration</label>
+    <label><input type="checkbox" value="Consultancy" onchange="toggleChk(this)"> Consultancy</label>
   </div>`,
   `<button class="btn bout" onclick="closeM()">Cancel</button><button class="btn bteal" onclick="doConv('${enqId}')">✅ Register as Client</button>`,'lg');
 }
@@ -1095,7 +1169,7 @@ function dClients(){
   const expD=rows.map(r=>({'Client ID':r.id,'Company':r.company,'Contact':r.contact,'Mobile':r.mobile,'Email':r.email,'GST':r.gst||'','PAN':r.pan||'','Services':(r.services||[]).join('; '),'Status':r.status,'Date':fd(r.createdAt),'Enquiry ID':r.enquiryId||''}));
   let h=`<div class="ph"><div><h2>Client Master</h2><p class="ph-sub">${total} clients | Customer Database</p></div>
   <div class="ph-act">
-    <button class="btn bexp" onclick="xls(${JSON.stringify(expD).replace(/'/g,"\\'")},'clients')">⬇️ Excel</button>
+    <button class="btn bexp" onclick="xls(${JSON.stringify(expD).replace(/'/g,"\\'")},'clients')">Export Excel</button>
     <button class="btn badd" onclick="cliForm()">+ Add Client</button>
   </div></div>
   <div class="card">
@@ -1129,7 +1203,7 @@ function cpg(p){cP=p;dClients()}
 
 function cliForm(id=''){
   const r=id?CLIENTS.find(x=>x.id===id):{};const isE=!!r.id;
-  const srvList=['Recruitment Process','HR Process & Compliance','Payroll Process','Labour Compliance'];
+  const srvList=['Google Automation','Recruitment','Pay Roll','Registration','Consultancy'];
   const states=['Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat','Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal','Delhi','Jammu & Kashmir','Ladakh','Chandigarh','Puducherry','Other'];
   const stateOpts=states.map(s=>`<option ${(r.state||'')=== s?'selected':''}>${s}</option>`).join('');
   openM(isE?`Edit Client: ${id}`:'Add Client',`
@@ -1227,7 +1301,9 @@ async function saveCli(id){
   };
   if(id) payload.id=id;
   if(GAS_OK){
+    showLoading(id?'Updating client…':'Saving client…');
     const res=await gasCall('saveClient',payload);
+    hideLoading();
     if(!res.success){toast('Save failed: '+(res.error||'unknown error'),'e');return}
     if(!id&&res.id) id=res.id;
     try{const fresh=await gasCall('getClients',{});if(fresh.success)CLIENTS=mapClients(fresh.data);}catch(_){}
@@ -1295,12 +1371,15 @@ let _prefillReq=null;
 function rNewReq(){
   const u=SES.user;const p=_prefillReq||{};_prefillReq=null;
   const cliOpts=CLIENTS.map(c=>`<option value="${esc(c.id)}" ${p.id===c.id?'selected':''}>${esc(c.company)}</option>`).join('');
+  const empOpts=USERS.map(u2=>`<option value="${esc(u2.name)}" ${u2.name===u.name?'selected':''}>${esc(u2.name)}</option>`).join('');
+  const adminOpts=USERS.filter(x=>x.role==='admin').map(u2=>`<option value="${esc(u2.name)}">${esc(u2.name)}</option>`).join('');
   document.getElementById('pa').innerHTML=`
   <div class="ph"><h2>New Bill Request</h2><p class="ph-sub">Raise a billing request — PI will be auto-generated</p></div>
   <div class="card">
     <div class="fsec" style="margin-top:0">Request Details</div>
     <div class="fg">
-      <div class="ff"><label>Requested By</label><input id="rBy" value="${esc(u.name)}" readonly></div>
+      <div class="ff"><label>Employee Name (Requested By) *</label><select id="rBy"><option value="">Select Employee…</option>${empOpts}</select></div>
+      <div class="ff"><label>Bill Requested By (Admin) *</label><select id="rReqBy"><option value="">Select Admin…</option>${adminOpts}</select></div>
       <div class="ff"><label>Department</label><input id="rDept" value="${esc(u.dept||'')}" readonly></div>
       <div class="ff"><label>Bill Request Date *</label><input id="rDate" type="date" value="${tod()}"></div>
       <div class="ff"><label>Billing Amount (₹) *</label><input id="rAmt" type="number" placeholder="0.00" min="0"></div>
@@ -1336,28 +1415,33 @@ function fillCliDetails(sel){
   if(r.gstRate){const gs=document.getElementById('rGST');if(gs)gs.value=r.gstRate;}
 }
 async function submitReq(){
-  const nm=v('rCliName'),em=v('rCliMail'),dt=v('rDate'),amt=v('rAmt'),pur=v('rPurpose');
+  const byName=v('rBy'),reqBy=v('rReqBy'),nm=v('rCliName'),em=v('rCliMail'),dt=v('rDate'),amt=v('rAmt'),pur=v('rPurpose');
+  if(!byName||!reqBy){toast('Select Employee Name and Admin Name','e');return}
   if(!nm||!em||!dt||!amt||!pur){toast('Fill all required fields','e');return}
   if(isNaN(amt)||+amt<=0){toast('Enter valid amount','e');return}
   const gstRate=+v('rGST')||18;
   const gstAmt=(+amt)*gstRate/100;
   const totalAmt=(+amt)+gstAmt;
   let id=rid();
+  const now=new Date().toISOString();
   const payload={clientId:v('rCliSel'),clientName:nm,clientMail:em,ccMail:v('rCC'),
     clientAddr:v('rCliAddr'),clientGST:v('rCliGST'),clientPAN:v('rCliPAN'),
-    requestDate:dt,amount:+amt,gstRate,gstAmt,totalAmt,hsn:v('rHSN'),purpose:pur};
+    requestDate:dt,amount:+amt,gstRate,gstAmt,totalAmt,hsn:v('rHSN'),purpose:pur,
+    requestedByAdmin:reqBy};
+  showLoading('Submitting bill request…');
   if(GAS_OK){
     const res=await gasCall('saveRequest',payload);
+    hideLoading();
     if(!res.success){toast(res.error||'Submit failed','e');return}
     if(res.id) id=res.id;
-  }
-  REQUESTS.push({id,...payload,byId:SES.user.id,byName:SES.user.name,
-    dept:v('rDept')||SES.user.dept||'—',status:'Pending for PI',createdAt:new Date().toISOString(),
+  } else { hideLoading(); }
+  REQUESTS.push({id,...payload,byId:SES.user.id,byName,requestedByAdmin:reqBy,
+    dept:v('rDept')||SES.user.dept||'—',status:'Pending for PI',createdAt:now,
     piNumber:'',piDate:'',piFile:null,isFinalPI:false,
     invoiceCompany:'',tallyInv:'',invoiceAmt:0,invoiceDate:'',invoiceFile:null,
     paymentStatus:'',paymentDate:'',paymentRef:'',paymentAmt:0,
-    statusHistory:[{status:'Pending for PI',by:SES.user.name,at:new Date().toISOString()}]});
-  sReq();toast(`Request ${id} submitted! Accounts notified 🎉`,'s');go('myreq');
+    statusHistory:[{status:'Pending for PI',by:byName,at:now}]});
+  sReq();toast(`Request ${id} submitted!`,'s');go('myreq');
 }
 
 let mP=1,mSr='',mSt2='';
@@ -1378,24 +1462,25 @@ function dMyReq(){
   const {rows:pg,total,pages}=pg_r(rows,mP,PG);
   let h=`<div class="ph"><div><h2>My Bill Requests</h2><p class="ph-sub">${total} requests</p></div>
   <div class="ph-act">
-    <button class="btn bexp" onclick="xls(rows2xls([...REQUESTS]),'my_requests')">⬇️ Excel</button>
+    <button class="btn bexp" onclick="xls(rows2xls([...REQUESTS]),'my_requests')">Export Excel</button>
     <button class="btn badd" onclick="go('newreq')">+ New Request</button>
   </div></div>
   <div class="card"><div class="tbar">
     <div class="srch"><input placeholder="Search ID, client, purpose, PI…" oninput="mSr=this.value;mP=1;dMyReq()" value="${esc(mSr)}"></div>
     <select class="fsel" onchange="mSt2=this.value;mP=1;dMyReq()"><option value="">All Status</option><option>Pending for PI</option><option>PI Created</option><option>Completed</option></select>
   </div>
-  <div class="tw"><table><tr><th>Request ID</th><th>Client</th><th>Amount</th><th>Date</th><th>PI No</th><th>Status</th><th>Progress</th><th>Actions</th></tr>`;
-  if(!pg.length)h+=`<tr><td colspan="8"><div class="empty"><div class="empty-ic">📭</div><p>No requests found</p></div></td></tr>`;
+  <div class="tw"><table><tr><th>Request ID</th><th>Client</th><th>Amount</th><th>Date</th><th>Created</th><th>PI No</th><th>Status</th><th>Progress</th><th>Actions</th></tr>`;
+  if(!pg.length)h+=`<tr><td colspan="9"><div class="empty"><div class="empty-ic">&#8709;</div><p style="color:var(--t3);font-size:14px">No requests found</p></div></td></tr>`;
   pg.forEach(r=>{const prog=r.status==='Completed'?'p100':r.status==='PI Created'?'p50':'p25';
-    h+=`<tr><td><strong style="color:var(--accent)">${esc(r.id)}</strong></td><td>${esc(r.clientName)}</td>
+    h+=`<tr><td><strong style="color:var(--primary);font-weight:700">${esc(r.id)}</strong></td><td>${esc(r.clientName)}</td>
     <td class="amt">${fmt(r.amount)}</td><td>${fd(r.requestDate)}</td>
+    <td style="font-size:12px">${r.createdAt?new Date(r.createdAt).toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—'}</td>
     <td>${r.piNumber?`<span style="color:var(--teal);font-weight:700">${esc(r.piNumber)}</span>`:'—'}</td>
     <td>${sBadge(r.status)}</td>
     <td style="min-width:90px"><div class="pt"><div class="pf ${prog}"></div></div></td>
-    <td><div class="act"><button class="ib" onclick="viewReq('${r.id}')">👁 View</button>
-    ${r.piFile?`<button class="ib gr" onclick="dlFile('${r.id}','pi')">⬇️PI</button>`:''}
-    ${r.invoiceFile?`<button class="ib gr" onclick="dlFile('${r.id}','inv')">⬇️Inv</button>`:''}
+    <td><div class="act"><button class="ib tl" onclick="viewReq('${r.id}')">View</button>
+    ${r.piFile?`<button class="ib tl" onclick="dlFile('${r.id}','pi')">Download PI</button>`:''}
+    ${r.invoiceFile?`<button class="ib gr" onclick="dlFile('${r.id}','inv')">Download Inv</button>`:''}
     </div></td></tr>`;});
   h+=`</table></div>${pager(total,pages,mP,'mpg')}</div>`;
   document.getElementById('pa').innerHTML=h;
@@ -1424,21 +1509,21 @@ function dAllReq(){
   const depts=[...new Set(REQUESTS.map(r=>r.dept))].filter(Boolean);
   const {rows:pg,total,pages}=pg_r(rows,aP,PG);
   let h=`<div class="ph"><div><h2>All Requests</h2><p class="ph-sub">${total} total</p></div>
-  <button class="btn bexp" onclick="xls(rows2xls(rows),'all_requests')">⬇️ Excel</button></div>
+  <button class="btn bexp" onclick="xls(rows2xls(rows),'all_requests')">Export Excel</button></div>
   <div class="card"><div class="tbar">
     <div class="srch"><input placeholder="Request ID, client, PI, invoice…" oninput="aSr=this.value;aP=1;dAllReq()" value="${esc(aSr)}"></div>
     <select class="fsel" onchange="aSt=this.value;aP=1;dAllReq()"><option value="">All Status</option><option>Pending for PI</option><option>PI Created</option><option>Completed</option></select>
     <select class="fsel" onchange="aDept=this.value;aP=1;dAllReq()"><option value="">All Depts</option>${depts.map(d=>`<option>${esc(d)}</option>`).join('')}</select>
   </div>
-  <div class="tw"><table><tr><th>Request ID</th><th>Client</th><th>Amount</th><th>By</th><th>Dept</th><th>PI No</th><th>Status</th><th>Actions</th></tr>`;
-  if(!pg.length)h+=`<tr><td colspan="8"><div class="empty"><div class="empty-ic">📭</div><p>No requests</p></div></td></tr>`;
-  pg.forEach(r=>h+=`<tr><td><strong style="color:var(--accent)">${esc(r.id)}</strong></td><td>${esc(r.clientName)}</td>
-  <td class="amt">${fmt(r.amount)}</td><td>${esc(r.byName)}</td><td><span class="chip">${esc(r.dept)}</span></td>
+  <div class="tw"><table><tr><th>Request ID</th><th>Client</th><th>Amount</th><th>Employee</th><th>Requested By</th><th>Dept</th><th>PI No</th><th>Status</th><th>Date</th><th>Actions</th></tr>`;
+  if(!pg.length)h+=`<tr><td colspan="10"><div class="empty"><div class="empty-ic">&#8709;</div><p style="color:var(--t3);font-size:14px">No requests found</p></div></td></tr>`;
+  pg.forEach(r=>h+=`<tr><td><strong style="color:var(--primary);font-weight:700">${esc(r.id)}</strong></td><td>${esc(r.clientName)}</td>
+  <td class="amt">${fmt(r.amount)}</td><td>${esc(r.byName)}</td><td><span class="chip">${esc(r.requestedByAdmin||'—')}</span></td><td><span class="chip">${esc(r.dept)}</span></td>
   <td>${r.piNumber?`<span style="color:var(--teal);font-weight:700">${esc(r.piNumber)}</span>`:'—'}</td>
-  <td>${sBadge(r.status)}</td>
-  <td><div class="act"><button class="ib" onclick="viewReq('${r.id}')">👁</button>
-  ${r.status==='Pending for PI'?`<button class="ib gr" onclick="go('pi')">📄PI</button>`:''}
-  ${r.status==='Final PI'?`<button class="ib gr" onclick="go('inv')">📤Inv</button>`:r.status==='PI Created'?'<span style="font-size:11px;color:var(--orange)">🔒Finalise PI</span>':''}
+  <td>${sBadge(r.status)}</td><td style="font-size:12px">${fd(r.createdAt)}</td>
+  <td><div class="act"><button class="ib tl" onclick="viewReq('${r.id}')">View</button>
+  ${r.status==='Pending for PI'?`<button class="ib gr" onclick="go('pi')">Create PI</button>`:''}
+  ${r.status==='Final PI'?`<button class="ib gr" onclick="go('inv')">Upload Invoice</button>`:r.status==='PI Created'?'<span style="font-size:11px;color:var(--amber);font-style:italic">Finalise PI First</span>':''}
   </div></td></tr>`);
   h+=`</table></div>${pager(total,pages,aP,'apg')}</div>`;
   document.getElementById('pa').innerHTML=h;
@@ -1455,10 +1540,12 @@ function viewReq(id){
   </div>
   <div class="fsec" style="margin-top:0">Bill Request</div>
   <div class="ig">
-    <div class="ii"><label>Request ID</label><span style="color:var(--accent);font-size:15px;font-weight:800">${esc(r.id)}</span></div>
-    <div class="ii"><label>Date</label><span>${fd(r.requestDate)}</span></div>
-    <div class="ii"><label>Requested By</label><span>${esc(r.byName)}</span></div>
+    <div class="ii"><label>Request ID</label><span style="color:var(--primary);font-size:15px;font-weight:800">${esc(r.id)}</span></div>
+    <div class="ii"><label>Bill Request Date</label><span>${fd(r.requestDate)}</span></div>
+    <div class="ii"><label>Employee (Requested By)</label><span>${esc(r.byName)}</span></div>
+    <div class="ii"><label>Bill Requested By (Admin)</label><span>${esc(r.requestedByAdmin||'—')}</span></div>
     <div class="ii"><label>Department</label><span>${esc(r.dept)}</span></div>
+    <div class="ii"><label>Created At</label><span>${r.createdAt?new Date(r.createdAt).toLocaleString('en-IN'):'—'}</span></div>
     <div class="ii"><label>Client</label><span>${esc(r.clientName)}</span></div>
     <div class="ii"><label>Client Email</label><span>${esc(r.clientMail)}</span></div>
     <div class="ii"><label>Amount</label><span class="amt" style="color:var(--green);font-size:15px">${fmt(r.amount)}</span></div>
@@ -1468,7 +1555,7 @@ function viewReq(id){
   if(r.piNumber){body+=`<div class="fsec">PI Details</div>
   <div class="ig"><div class="ii"><label>PI Number</label><span style="color:var(--accent);font-weight:700">${esc(r.piNumber)}</span></div>
   <div class="ii"><label>PI Date</label><span>${fd(r.piDate)}</span></div></div>
-  ${r.piFile?`<div class="fprev">📄 <a href="${r.piFile}" download="PI_${r.id}">Download PI Document</a></div>`:''}`;}
+  ${r.piFile?`<div class="fprev">📄 <a href="${r.piFile}" download="PI_${r.id}" style="color:var(--primary)">Download PI Document</a></div>`:''}`;}
   if(r.tallyInv){body+=`<div class="fsec">Invoice Details</div>
   <div class="ig"><div class="ii"><label>Company</label><span>${esc(r.invoiceCompany)}</span></div>
   <div class="ii"><label>Tally Invoice</label><span style="font-weight:700">${esc(r.tallyInv)}</span></div>
@@ -1478,12 +1565,12 @@ function viewReq(id){
   body+=`<div class="fsec">Status History</div><div class="tl">
   ${(r.statusHistory||[]).map(h=>`<div class="tli"><div class="tld done">✅</div><div class="tli-i"><strong>${esc(h.status)}</strong><span>${fd(h.at)} • ${esc(h.by||'—')}</span></div></div>`).join('')}</div>`;
   let foot=`<button class="btn bout" onclick="closeM()">Close</button>`;
-  if(isAcc&&(r.status==='Pending for PI'))foot+=`<button class="btn bteal" onclick="closeM();piForm('${id}')">📄 Create PI</button>`;
-  if(r.piNumber)foot+=`<button class="btn bteal" onclick="downloadPIPDF('${id}',false)">⬇️ PI PDF</button>`;
-  if(r.isFinalPI)foot+=`<button class="btn badd" onclick="downloadPIPDF('${id}',true)">⬇️ Final PI PDF</button>`;
-  if(isAcc&&r.status==='Final PI')foot+=`<button class="btn borg" onclick="closeM();invForm('${id}')">📤 Upload Invoice</button>`;
-  if(isAcc&&r.status==='PI Created')foot+=`<button class="btn bout" style="cursor:not-allowed;opacity:.5" title="Set PI to Final first" disabled>🔒 Finalise PI First</button>`;
-  if(isAcc&&r.status==='Completed'&&!r.paymentStatus)foot+=`<button class="btn bteal" onclick="closeM();paymentForm('${id}')">💳 Update Payment</button>`;
+  if(isAcc&&(r.status==='Pending for PI'))foot+=`<button class="btn bteal" onclick="closeM();piForm('${id}')">Create PI</button>`;
+  if(r.piNumber)foot+=`<button class="btn bteal" onclick="downloadPIPDF('${id}',false)">Download PI PDF</button>`;
+  if(r.isFinalPI)foot+=`<button class="btn badd" onclick="downloadPIPDF('${id}',true)">Download Final PI</button>`;
+  if(isAcc&&r.status==='Final PI')foot+=`<button class="btn borg" onclick="closeM();invForm('${id}')">Upload Invoice</button>`;
+  if(isAcc&&r.status==='PI Created')foot+=`<button class="btn bout" style="cursor:not-allowed;opacity:.5" title="Set PI to Final first" disabled>Finalise PI First</button>`;
+  if(isAcc&&r.status==='Completed'&&!r.paymentStatus)foot+=`<button class="btn bteal" onclick="closeM();paymentForm('${id}')">Update Payment</button>`;
   openM(`Request: ${id}`,body,foot,'lg');
 }
 
@@ -1506,19 +1593,19 @@ function dPI(){
   let h=`<div class="ph"><h2>PI Management</h2><p class="ph-sub">${total} pending PI creation</p></div>
   <div class="card"><div class="tbar">
     <div class="srch"><input placeholder="Search…" oninput="piSr=this.value;piP=1;dPI()" value="${esc(piSr)}"></div>
-    <span style="font-size:13px;color:var(--orange);font-weight:700">📋 ${rows.filter(r=>!r.piNumber).length} pending | 📄 ${rows.filter(r=>r.piNumber&&!r.isFinalPI).length} draft | ✅ ${rows.filter(r=>r.isFinalPI).length} final</span>
+    <span style="font-size:13px;color:var(--orange);font-weight:700">&#9776; ${rows.filter(r=>!r.piNumber).length} pending | 📄 ${rows.filter(r=>r.piNumber&&!r.isFinalPI).length} draft | ✅ ${rows.filter(r=>r.isFinalPI).length} final</span>
   </div>
   <div class="tw"><table><tr><th>Request ID</th><th>Client</th><th>Email</th><th>Amount</th><th>PI No</th><th>PI Status</th><th>By</th><th>Date</th><th>Action</th></tr>`;
-  if(!pg.length)h+=`<tr><td colspan="8"><div class="empty"><div class="empty-ic">🎉</div><p>All up to date!</p></div></td></tr>`;
+  if(!pg.length)h+=`<tr><td colspan="8"><div class="empty"><div class="empty-ic">&#10003;</div><p style="color:var(--t3);font-size:14px">All up to date</p></div></td></tr>`;
   pg.forEach(r=>{
-    const piSt=r.isFinalPI||r.status==='Final PI'?'<span class="bdg bDone">✅ Final</span>':r.piNumber?'<span class="bdg bPI">📋 Draft</span>':'<span class="bdg bPend">⏳ Pending</span>';
+    const piSt=r.isFinalPI||r.status==='Final PI'?'<span class="bdg bDone">&#10003; Final</span>':r.piNumber?'<span class="bdg bPI">Draft</span>':'<span class="bdg bPend">Pending</span>';
     h+=`<tr><td><strong style="color:var(--accent)">${esc(r.id)}</strong></td><td>${esc(r.clientName)}</td>
   <td style="font-size:12px">${esc(r.clientMail)}</td><td class="amt">${fmt(r.amount)}</td>
   <td>${r.piNumber?`<strong>${esc(r.piNumber)}</strong>`:'—'}</td><td>${piSt}</td>
   <td>${esc(r.byName)}</td><td>${fd(r.requestDate)}</td>
   <td><div class="act">
     <button class="ib gr" onclick="piForm('${r.id}')">${r.piNumber?'✏️ Edit PI':'📄 Create PI'}</button>
-    ${r.piNumber?`<button class="ib" onclick="downloadPIPDF('${r.id}',false)">⬇️PDF</button>`:''}
+    ${r.piNumber?`<button class="ib tl" onclick="downloadPIPDF('${r.id}',false)">Download PI</button>`:''}
   </div></td></tr>`;});
   h+=`</table></div>${pager(total,pages,piP,'pipg')}</div>`;
   document.getElementById('pa').innerHTML=h;
@@ -1529,10 +1616,10 @@ function piForm(reqId){
   const yr=new Date().getFullYear();
   const piSuggest='PI-'+yr+'-'+String(REQUESTS.filter(x=>x.piNumber).length+1).padStart(3,'0');
   openM(`Create PI — ${reqId}`,`
-  <div style="background:linear-gradient(135deg,#e3f2fd,#f3e5f5);border-radius:8px;padding:12px;margin-bottom:14px;font-size:13px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
-    <div><span style="color:var(--t3);font-size:11px;font-weight:700;display:block">CLIENT</span><strong>${esc(r.clientName)}</strong></div>
-    <div><span style="color:var(--t3);font-size:11px;font-weight:700;display:block">REQ AMOUNT</span><strong>${fmt(r.amount)}</strong></div>
-    <div><span style="color:var(--t3);font-size:11px;font-weight:700;display:block">PURPOSE</span><strong>${esc((r.purpose||'').substring(0,30))}</strong></div>
+  <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:14px;margin-bottom:15px;font-size:14px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+    <div><span style="color:var(--t3);font-size:11px;font-weight:700;display:block;text-transform:uppercase;letter-spacing:.05em">CLIENT</span><strong>${esc(r.clientName)}</strong></div>
+    <div><span style="color:var(--t3);font-size:11px;font-weight:700;display:block;text-transform:uppercase;letter-spacing:.05em">REQ AMOUNT</span><strong>${fmt(r.amount)}</strong></div>
+    <div><span style="color:var(--t3);font-size:11px;font-weight:700;display:block;text-transform:uppercase;letter-spacing:.05em">PURPOSE</span><strong>${esc((r.purpose||'').substring(0,30))}</strong></div>
   </div>
   <div class="fg">
     <div class="ff"><label>PI Number *</label><input id="pNum" value="${piSuggest}" placeholder="PI-2025-001"></div>
@@ -1542,7 +1629,7 @@ function piForm(reqId){
     <div class="ff"><label>Mark as Final PI?</label><select id="pFinal"><option value="no">No — Draft PI</option><option value="yes">Yes — Final PI</option></select></div>
     <div class="ff"><label>Notes / Terms</label><input id="pNotes" placeholder="e.g. Payment due within 30 days"></div>
   </div>
-  <div style="margin-top:12px;padding:10px;background:#fff8e1;border-radius:8px;font-size:12px;color:var(--amber)">
+  <div style="margin-top:13px;padding:11px;background:#fff7ed;border:1px solid #fed7aa;border-radius:9px;font-size:13px;color:var(--amber)">
     💡 PI PDF will be auto-generated — no upload needed. You can also upload a custom PI below.
   </div>
   <div class="ff s2" style="margin-top:10px">
@@ -1554,8 +1641,8 @@ function piForm(reqId){
     <div id="pPrev"></div>
   </div>`,
   `<button class="btn bout" onclick="closeM()">Cancel</button>
-   <button class="btn bteal" onclick="previewPI('${reqId}')">👁 Preview PI PDF</button>
-   <button class="btn badd" onclick="savePI('${reqId}')">✅ Save PI</button>`,'lg');
+   <button class="btn bteal" onclick="previewPI('${reqId}')">Preview PI</button>
+   <button class="btn badd" onclick="savePI('${reqId}')">Save PI</button>`,'lg');
 }
 
 function previewPI(reqId){
@@ -1654,7 +1741,9 @@ async function savePI(reqId){
   const r=REQUESTS.find(x=>x.id===reqId);if(!r)return;
   const base=r.amount||0,gstAmt=base*gstRate/100,total=base+gstAmt;
   if(GAS_OK){
+    showLoading('Creating PI…');
     const res=await gasCall('createPI',{reqId,piNumber:num,piDate:dt,validUntil:v('pValid'),gstRate,gstAmt,total,notes,isFinal,fileUrl:fd2?'[file attached]':''});
+    hideLoading();
     if(!res.success){toast(res.error||'Failed','e');return}
   }
   const idx=REQUESTS.findIndex(x=>x.id===reqId);
@@ -1698,16 +1787,16 @@ function dInv(){
   let h=`<div class="ph"><h2>Invoice Upload</h2><p class="ph-sub">${total} with Final PI — ready for invoice</p></div>
   <div class="card"><div class="tbar">
     <div class="srch"><input placeholder="Search…" oninput="ivSr=this.value;ivP=1;dInv()" value="${esc(ivSr)}"></div>
-    <span style="font-size:13px;color:var(--accent);font-weight:700">📄 ${total} with PI</span>
+    <span style="font-size:13px;color:var(--accent);font-weight:700">&#128196; ${total} with PI</span>
   </div>
   <div class="tw"><table><tr><th>Request ID</th><th>Client</th><th>Req Amount</th><th>PI Number</th><th>PI Date</th><th>By</th><th>Action</th></tr>`;
-  if(!pg.length)h+=`<tr><td colspan="7"><div class="empty"><div class="empty-ic">🎉</div><p>All done!</p></div></td></tr>`;
+  if(!pg.length)h+=`<tr><td colspan="7"><div class="empty"><div class="empty-ic">&#10003;</div><p>All done!</p></div></td></tr>`;
   pg.forEach(r=>h+=`<tr><td><strong style="color:var(--accent)">${esc(r.id)}</strong></td><td>${esc(r.clientName)}</td>
   <td class="amt">${fmt(r.amount)}</td><td><strong style="color:var(--teal)">${esc(r.piNumber)}</strong></td>
   <td>${fd(r.piDate)}</td><td>${esc(r.byName)}</td>
   <td><div class="act">
-    <button class="ib gr" onclick="invForm('${r.id}')">📤 Invoice</button>
-    ${r.piNumber?`<button class="ib" onclick="downloadPIPDF('${r.id}',false)">⬇️ PI</button>`:''}
+    <button class="ib or" onclick="invForm('${r.id}')">Upload Invoice</button>
+    ${r.piNumber?`<button class="ib tl" onclick="downloadPIPDF('${r.id}',false)">Download PI</button>`:''}
   </div></td></tr>`);
   h+=`</table></div>${pager(total,pages,ivP,'ivpg')}</div>`;
   document.getElementById('pa').innerHTML=h;
@@ -1718,7 +1807,7 @@ function invForm(reqId){
   if(!r.isFinalPI&&r.status!=='Final PI'){toast('Cannot create invoice — set PI to Final first!','e');return;}
   const coOpts=COMPANIES.map(c=>`<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('');
   openM(`Upload Invoice — ${reqId}`,`
-  <div style="background:var(--bg);border-radius:8px;padding:11px;margin-bottom:14px;font-size:13px">
+  <div style="background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:15px;font-size:14px">
     <strong>PI:</strong> ${esc(r.piNumber)} &nbsp;|&nbsp; <strong>Client:</strong> ${esc(r.clientName)} &nbsp;|&nbsp; <strong>Amount:</strong> ${fmt(r.amount)}</div>
   <div class="fg">
     <div class="ff s2"><label>Company Name *</label><select id="iCo"><option value="">Select company…</option>${coOpts}</select></div>
@@ -1733,7 +1822,7 @@ function invForm(reqId){
       </div><div id="iPrev"></div>
     </div>
   </div>`,
-  `<button class="btn bout" onclick="closeM()">Cancel</button><button class="btn badd" onclick="saveInv('${reqId}')">✅ Mark Complete</button>`,'lg');
+  `<button class="btn bout" onclick="closeM()">Cancel</button><button class="btn badd" onclick="saveInv('${reqId}')">Mark Complete</button>`,'lg');
 }
 async function saveInv(reqId){
   const co=v('iCo'),tally=v('iTally'),dt=v('iDate'),amt=v('iAmt');
@@ -1741,7 +1830,9 @@ async function saveInv(reqId){
   const fi=document.getElementById('iFile');let fd3=null;
   if(fi.files.length){try{fd3=await fileToB64(fi.files[0])}catch{toast('File error','e');return}}
   if(GAS_OK){
+    showLoading('Uploading invoice…');
     const res=await gasCall('uploadInvoice',{reqId,company:co,tallyInv:tally,invoiceDate:dt,amountGST:+amt,fileUrl:fd3?'[file attached]':''});
+    hideLoading();
     if(!res.success){toast(res.error||'Failed','e');return}
   }
   const idx=REQUESTS.findIndex(x=>x.id===reqId);
@@ -1761,17 +1852,17 @@ async function rPayments(){
   const pending=rows.filter(r=>r.status==='Completed'&&!r.paymentStatus);
   const totalInv=rows.reduce((a,r)=>a+(+r.invoiceAmt||0),0);
   const totalPaid=paid.reduce((a,r)=>a+(+r.paymentAmt||0),0);
-  let h=`<div class="ph"><h2>💳 Payment Tracker</h2>
-  <button class="btn bexp" onclick="xls(rows.map(r=>({'Req ID':r.id,'Client':r.clientName,'Invoice':r.tallyInv||'','Invoice Amt':r.invoiceAmt||0,'Payment Status':r.paymentStatus||'Pending','Payment Date':r.paymentDate||'','Amount Received':r.paymentAmt||0,'UTR/Ref':r.paymentRef||'','Mode':r.paymentMode||''})),'payment_report')">⬇️ Excel</button></div>
+  let h=`<div class="ph"><h2>Payment Tracker</h2>
+  <button class="btn bexp" onclick="xls(rows.map(r=>({'Req ID':r.id,'Client':r.clientName,'Invoice':r.tallyInv||'','Invoice Amt':r.invoiceAmt||0,'Payment Status':r.paymentStatus||'Pending','Payment Date':r.paymentDate||'','Amount Received':r.paymentAmt||0,'UTR/Ref':r.paymentRef||'','Mode':r.paymentMode||''})),'payment_report')">Export Excel</button></div>
   <div class="sg">
-    <div class="sc c5"><div class="sc-ic">✅</div><div class="sc-l">Paid</div><div class="sc-v">${paid.length}</div></div>
-    <div class="sc c6"><div class="sc-ic">⏳</div><div class="sc-l">Awaiting Payment</div><div class="sc-v">${pending.length}</div></div>
-    <div class="sc c3"><div class="sc-ic">💰</div><div class="sc-l">Total Invoiced</div><div class="sc-v" style="font-size:16px">${fmt(totalInv)}</div></div>
-    <div class="sc c5"><div class="sc-ic">🏦</div><div class="sc-l">Total Received</div><div class="sc-v" style="font-size:16px">${fmt(totalPaid)}</div></div>
+    <div class="sc c5"><div class="sc-ic">&#10003;</div><div class="sc-l">Paid</div><div class="sc-v">${paid.length}</div></div>
+    <div class="sc c6"><div class="sc-ic">&#9202;</div><div class="sc-l">Awaiting Payment</div><div class="sc-v">${pending.length}</div></div>
+    <div class="sc c3"><div class="sc-ic">&#x20B9;</div><div class="sc-l">Total Invoiced</div><div class="sc-v" style="font-size:16px">${fmt(totalInv)}</div></div>
+    <div class="sc c5"><div class="sc-ic">&#x2714;</div><div class="sc-l">Total Received</div><div class="sc-v" style="font-size:16px">${fmt(totalPaid)}</div></div>
   </div>
   <div class="card"><div class="tw"><table>
     <tr><th>Request ID</th><th>Client</th><th>Invoice No</th><th>Invoice Amt</th><th>Payment Status</th><th>Paid Amt</th><th>Date</th><th>UTR/Ref</th><th>Actions</th></tr>`;
-  if(!rows.length)h+=`<tr><td colspan="9"><div class="empty"><div class="empty-ic">💳</div><p>No completed bills yet</p></div></td></tr>`;
+  if(!rows.length)h+=`<tr><td colspan="9"><div class="empty"><div class="empty-ic">&#9699;</div><p>No completed bills yet</p></div></td></tr>`;
   rows.forEach(r=>{
     const pst=r.paymentStatus||'Pending';
     h+=`<tr>
@@ -1785,7 +1876,7 @@ async function rPayments(){
       <td style="font-size:12px">${esc(r.paymentRef||'—')}</td>
       <td><div class="act">
         <button class="ib" onclick="viewReq('${r.id}')">👁</button>
-        ${pst!=='Paid'?`<button class="ib gr" onclick="paymentForm('${r.id}')">💳 Pay</button>`:''}
+        ${pst!=='Paid'?`<button class="ib tl" onclick="paymentForm('${r.id}')">Record Payment</button>`:''}
       </div></td></tr>`;
   });
   h+=`</table></div></div>`;
@@ -1809,7 +1900,7 @@ function downloadPIPDF(reqId,isFinal){
 function paymentForm(reqId){
   const r=REQUESTS.find(x=>x.id===reqId);if(!r)return;
   openM(`Update Payment — ${reqId}`,`
-  <div style="background:var(--bg);border-radius:8px;padding:11px;margin-bottom:14px;font-size:13px">
+  <div style="background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:15px;font-size:14px">
     <strong>Client:</strong> ${esc(r.clientName)} &nbsp;|&nbsp;
     <strong>Invoice:</strong> ${esc(r.tallyInv||'—')} &nbsp;|&nbsp;
     <strong>Invoice Amt:</strong> ${fmt(r.invoiceAmt)}
@@ -1835,14 +1926,16 @@ function paymentForm(reqId){
     <div class="ff s2"><label>Remarks</label><input id="pyRemarks" placeholder="Any additional notes"></div>
   </div>`,
   `<button class="btn bout" onclick="closeM()">Cancel</button>
-   <button class="btn badd" onclick="savePayment('${reqId}')">💳 Save Payment</button>`);
+   <button class="btn badd" onclick="savePayment('${reqId}')">Save Payment</button>`);
 }
 
 async function savePayment(reqId){
   const status=v('pyStatus'),dt=v('pyDate'),amt=v('pyAmt'),ref=v('pyRef'),mode=v('pyMode'),remarks=v('pyRemarks');
   if(!status||!dt){toast('Fill required fields','e');return}
   if(GAS_OK){
+    showLoading('Saving payment…');
     const res=await gasCall('updatePayment',{reqId,paymentStatus:status,paymentDate:dt,paymentAmt:+amt,paymentRef:ref,paymentMode:mode,paymentRemarks:remarks});
+    hideLoading();
     if(!res.success){toast(res.error||'Failed','e');return}
   }
   const idx=REQUESTS.findIndex(x=>x.id===reqId);
@@ -1874,35 +1967,35 @@ function rRep(){
 
   let h=`<div class="ph"><h2>Reports & Analytics</h2></div>
   <div class="sg">
-    <div class="sc c1"><div class="sc-ic">📋</div><div class="sc-l">Total Enquiries</div><div class="sc-v">${enqTotal}</div></div>
-    <div class="sc c2"><div class="sc-ic">🆕</div><div class="sc-l">New Enquiries</div><div class="sc-v">${enqNew}</div></div>
-    <div class="sc c3"><div class="sc-ic">✅</div><div class="sc-l">Converted</div><div class="sc-v">${enqConv}</div></div>
-    <div class="sc c3"><div class="sc-ic">🏢</div><div class="sc-l">Clients</div><div class="sc-v">${cliTotal}</div></div>
-    <div class="sc c6"><div class="sc-ic">⏳</div><div class="sc-l">Pending PI</div><div class="sc-v">${reqPend}</div></div>
-    <div class="sc c5"><div class="sc-ic">✅</div><div class="sc-l">Completed</div><div class="sc-v">${reqDone}</div></div>
-    <div class="sc c7"><div class="sc-ic">💰</div><div class="sc-l">Total Billed</div><div class="sc-v" style="font-size:16px">${fmt(totAmt)}</div></div>
-    <div class="sc c4"><div class="sc-ic">🏦</div><div class="sc-l">Invoiced (GST)</div><div class="sc-v" style="font-size:16px">${fmt(invAmt)}</div></div>
+    <div class="sc c1"><div class="sc-ic">&#9776;</div><div class="sc-l">Total Enquiries</div><div class="sc-v">${enqTotal}</div></div>
+    <div class="sc c2"><div class="sc-ic">&#x2B;</div><div class="sc-l">New Enquiries</div><div class="sc-v">${enqNew}</div></div>
+    <div class="sc c3"><div class="sc-ic">&#x2714;</div><div class="sc-l">Converted</div><div class="sc-v">${enqConv}</div></div>
+    <div class="sc c3"><div class="sc-ic">&#9678;</div><div class="sc-l">Clients</div><div class="sc-v">${cliTotal}</div></div>
+    <div class="sc c6"><div class="sc-ic">&#9202;</div><div class="sc-l">Pending PI</div><div class="sc-v">${reqPend}</div></div>
+    <div class="sc c5"><div class="sc-ic">&#10003;</div><div class="sc-l">Completed</div><div class="sc-v">${reqDone}</div></div>
+    <div class="sc c7"><div class="sc-ic">&#x20B9;</div><div class="sc-l">Total Billed</div><div class="sc-v" style="font-size:16px">${fmt(totAmt)}</div></div>
+    <div class="sc c4"><div class="sc-ic">&#x2023;</div><div class="sc-l">Invoiced (GST)</div><div class="sc-v" style="font-size:16px">${fmt(invAmt)}</div></div>
   </div>
   <div class="three" style="margin-bottom:18px">
-    <div class="card" onclick="xls(ENQUIRIES.map(r=>({'ID':r.id,'Company':r.company,'Contact':r.contact,'Mobile':r.mobile,'Email':r.email,'Option':r.option,'Status':r.status,'Date':fd(r.createdAt)})),'enquiry_report')" style="cursor:pointer;transition:transform .15s" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
-      <div style="font-size:28px;margin-bottom:8px">📋</div><div style="font-weight:700;color:var(--navy)">Enquiry Report</div><div style="font-size:12px;color:var(--t3);margin-top:3px">${enqTotal} records • Click to export</div></div>
+    <div class="card" onclick="xls(ENQUIRIES.map(r=>({'ID':r.id,'Company':r.company,'Contact':r.contact,'Mobile':r.mobile,'Email':r.email,'Service':r.option,'Status':r.status,'Date':fd(r.createdAt)})),'enquiry_report')" style="cursor:pointer;transition:transform .15s" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
+      <div style="font-size:28px;margin-bottom:8px;color:var(--primary)">&#9776;</div><div style="font-weight:700;color:var(--navy)">Enquiry Report</div><div style="font-size:12px;color:var(--t3);margin-top:3px">${enqTotal} records • Click to export</div></div>
     <div class="card" onclick="xls(CLIENTS.map(r=>({'ID':r.id,'Company':r.company,'Contact':r.contact,'Mobile':r.mobile,'Email':r.email,'GST':r.gst||'','PAN':r.pan||'','Services':(r.services||[]).join('; '),'Status':r.status})),'client_report')" style="cursor:pointer;transition:transform .15s" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
-      <div style="font-size:28px;margin-bottom:8px">🏢</div><div style="font-weight:700;color:var(--navy)">Client Report</div><div style="font-size:12px;color:var(--t3);margin-top:3px">${cliTotal} records • Click to export</div></div>
+      <div style="font-size:28px;margin-bottom:8px;color:var(--primary)">&#9878;</div><div style="font-weight:700;color:var(--navy)">Client Report</div><div style="font-size:12px;color:var(--t3);margin-top:3px">${cliTotal} records • Click to export</div></div>
     <div class="card" onclick="xls(rows2xls(REQUESTS),'bill_report')" style="cursor:pointer;transition:transform .15s" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
-      <div style="font-size:28px;margin-bottom:8px">💼</div><div style="font-weight:700;color:var(--navy)">Bill Report</div><div style="font-size:12px;color:var(--t3);margin-top:3px">${reqTotal} records • Click to export</div></div>
+      <div style="font-size:28px;margin-bottom:8px;color:var(--primary)">&#128196;</div><div style="font-weight:700;color:var(--navy)">Bill Report</div><div style="font-size:12px;color:var(--t3);margin-top:3px">${reqTotal} records • Click to export</div></div>
     <div class="card" onclick="xls(REQUESTS.filter(r=>r.status==='Pending for PI').map(r=>({'ID':r.id,'Client':r.clientName,'Amount':r.amount,'By':r.byName,'Date':r.requestDate})),'pending_pi')" style="cursor:pointer;transition:transform .15s" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
-      <div style="font-size:28px;margin-bottom:8px">⏳</div><div style="font-weight:700;color:var(--navy)">Pending PI</div><div style="font-size:12px;color:var(--t3);margin-top:3px">${reqPend} records • Click to export</div></div>
+      <div style="font-size:28px;margin-bottom:8px;color:var(--primary)">&#9202;</div><div style="font-weight:700;color:var(--navy)">Pending PI</div><div style="font-size:12px;color:var(--t3);margin-top:3px">${reqPend} records • Click to export</div></div>
     <div class="card" onclick="xls(REQUESTS.filter(r=>r.status==='Completed').map(r=>({'ID':r.id,'Client':r.clientName,'PI':r.piNumber,'Invoice':r.tallyInv,'Amount':r.invoiceAmt,'Date':r.invoiceDate})),'invoice_report')" style="cursor:pointer;transition:transform .15s" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
-      <div style="font-size:28px;margin-bottom:8px">🧾</div><div style="font-weight:700;color:var(--navy)">Invoice Report</div><div style="font-size:12px;color:var(--t3);margin-top:3px">${reqDone} records • Click to export</div></div>
+      <div style="font-size:28px;margin-bottom:8px;color:var(--primary)">&#128213;</div><div style="font-weight:700;color:var(--navy)">Invoice Report</div><div style="font-size:12px;color:var(--t3);margin-top:3px">${reqDone} records • Click to export</div></div>
     <div class="card" onclick="xls([...Object.values(dm)],'dept_report')" style="cursor:pointer;transition:transform .15s" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
-      <div style="font-size:28px;margin-bottom:8px">🏗️</div><div style="font-weight:700;color:var(--navy)">Dept Report</div><div style="font-size:12px;color:var(--t3);margin-top:3px">By department • Click to export</div></div>
+      <div style="font-size:28px;margin-bottom:8px;color:var(--primary)">&#9676;</div><div style="font-weight:700;color:var(--navy)">Dept Report</div><div style="font-size:12px;color:var(--t3);margin-top:3px">By department • Click to export</div></div>
   </div>
   <div class="two">
-  <div class="card"><div class="card-hd"><h3>🏗️ Department-wise Bills</h3></div>
+  <div class="card"><div class="card-hd"><h3>Department-wise Bills</h3></div>
   <div class="tw"><table><tr><th>Department</th><th>Requests</th><th>Amount</th></tr>
   ${Object.values(dm).length?Object.values(dm).map(d=>`<tr><td><span class="chip">${esc(d.dept)}</span></td><td style="font-weight:700;color:var(--accent)">${d.count}</td><td class="amt">${fmt(d.amt)}</td></tr>`).join(''):`<tr><td colspan="3" class="empty">No data</td></tr>`}
   </table></div></div>
-  <div class="card"><div class="card-hd"><h3>📊 Enquiry Status</h3></div>
+  <div class="card"><div class="card-hd"><h3>Enquiry Status</h3></div>
   <div class="tw"><table><tr><th>Status</th><th>Count</th></tr>
   ${Object.entries(esm).length?Object.entries(esm).map(([s,n])=>`<tr><td>${sBadge(s)}</td><td style="font-weight:700">${n}</td></tr>`).join(''):`<tr><td colspan="2" class="empty">No data</td></tr>`}
   </table></div></div></div>`;
@@ -1914,13 +2007,13 @@ function rRep(){
 // ════════════════════════════════════
 function rUsers(){
   let h=`<div class="ph"><h2>User Management</h2>
-  <div class="ph-act"><button class="btn bexp" onclick="xls(USERS.map(u=>({ID:u.id,Username:u.username,Name:u.name,Role:u.role,Dept:u.dept,Email:u.email})),'users')">⬇️ Excel</button>
+  <div class="ph-act"><button class="btn bexp" onclick="xls(USERS.map(u=>({ID:u.id,Username:u.username,Name:u.name,Role:u.role,Dept:u.dept,Email:u.email})),'users')">Export Excel</button>
   <button class="btn badd" onclick="uForm()">+ Add User</button></div></div>
   <div class="card"><div class="tw"><table><tr><th>Username</th><th>Name</th><th>Role</th><th>Department</th><th>Email</th><th>Actions</th></tr>`;
   USERS.forEach(u=>h+=`<tr><td><strong>${esc(u.username)}</strong></td><td>${esc(u.name)}</td><td>${rBadge(u.role)}</td>
   <td><span class="chip">${esc(u.dept||'—')}</span></td><td style="font-size:12px">${esc(u.email||'—')}</td>
   <td><div class="act"><button class="ib" onclick="uForm('${u.id}')">✏️ Edit</button>
-  ${u.id!==SES.user.id?`<button class="ib rd" onclick="delU('${u.id}')">🗑️</button>`:''}</div></td></tr>`);
+  ${u.id!==SES.user.id?`<button class="ib rd" onclick="delU('${u.id}')">Delete</button>`:''}</div></td></tr>`);
   h+=`</table></div></div>`;
   document.getElementById('pa').innerHTML=h;
 }
@@ -1933,7 +2026,7 @@ function uForm(id=''){
     <div class="ff"><label>Employee ID</label><input id="uEmpId" value="${esc(u.empId||'')}"></div>
     <div class="ff"><label>Designation</label><input id="uDesig" value="${esc(u.designation||'')}"></div>
     <div class="ff"><label>Role *</label><select id="uR"><option value="employee">Employee</option><option value="accounts">Accounts</option><option value="admin">Admin</option></select></div>
-    <div class="ff"><label>Department *</label><select id="uD"><option value="">Select…</option>${deptOpts2}</select></div>
+    <div class="ff"><label>Department / Service *</label><select id="uD"><option value="">Select…</option>${deptOpts2}</select></div>
     <div class="ff s2"><label>Email</label><input id="uE" type="email" value="${esc(u.email||'')}"></div>
     <div class="ff"><label>Mobile</label><input id="uMob" value="${esc(u.mobile||'')}"></div>
     <div class="ff"><label>Date of Joining</label><input id="uDOJ" type="date" value="${esc(u.doj||'')}"></div>
@@ -1964,13 +2057,13 @@ function rEmployees(){
     'Email':u.email||'','Mobile':u.mobile||'',
     'Date of Joining':u.doj||'','Role':u.role
   }));
-  let h=`<div class="ph"><h2>👤 Employee Master</h2>
+  let h=`<div class="ph"><h2>Employee Master</h2>
   <div class="ph-act">
-    <button class="btn bexp" onclick="xls(${JSON.stringify(expData).replace(/'/g,"\'")},'employees')">⬇️ Excel</button>
+    <button class="btn bexp" onclick="xls(${JSON.stringify(expData).replace(/'/g,"\'")},'employees')">Export Excel</button>
     <button class="btn badd" onclick="uForm()">+ Add Employee</button>
   </div></div>
   <div class="sg">
-    ${DEPTS.map(d=>{const n=USERS.filter(u=>u.dept===d).length;return`<div class="sc c1"><div class="sc-ic">🏢</div><div class="sc-l">${esc(d)}</div><div class="sc-v">${n}</div></div>`}).join('')}
+    ${DEPTS.map(d=>{const n=USERS.filter(u=>u.dept===d).length;return`<div class="sc c1"><div class="sc-ic">&#9678;</div><div class="sc-l">${esc(d)}</div><div class="sc-v">${n}</div></div>`}).join('')}
   </div>
   <div class="card"><div class="tw"><table>
     <tr><th>Emp ID</th><th>Name</th><th>Designation</th><th>Department</th><th>Email</th><th>Mobile</th><th>DOJ</th><th>Role</th><th>Actions</th></tr>`;
@@ -1986,7 +2079,7 @@ function rEmployees(){
     <td>${rBadge(u.role)}</td>
     <td><div class="act">
       <button class="ib" onclick="uForm('${u.id}')">✏️ Edit</button>
-      ${u.id!==SES.user.id?`<button class="ib rd" onclick="delU('${u.id}')">🗑️</button>`:''}
+      ${u.id!==SES.user.id?`<button class="ib rd" onclick="delU('${u.id}')">Delete</button>`:''}
     </div></td></tr>`);
   h+=`</table></div></div>`;
   document.getElementById('pa').innerHTML=h;
@@ -1998,7 +2091,7 @@ function rCos(){
   <div class="card"><div class="tw"><table><tr><th>ID</th><th>Company Name</th><th>GSTIN</th><th>Address</th><th>Actions</th></tr>`;
   COMPANIES.forEach(c=>h+=`<tr><td><span class="chip">${esc(c.id)}</span></td><td><strong>${esc(c.name)}</strong></td>
   <td><code style="font-size:12px">${esc(c.gstin||'—')}</code></td><td style="font-size:12px">${esc(c.address||'—')}</td>
-  <td><div class="act"><button class="ib" onclick="coForm('${c.id}')">✏️</button><button class="ib rd" onclick="delCo('${c.id}')">🗑️</button></div></td></tr>`);
+  <td><div class="act"><button class="ib" onclick="coForm('${c.id}')">Edit</button><button class="ib rd" onclick="delCo('${c.id}')">Delete</button></div></td></tr>`);
   h+=`</table></div></div>`;
   document.getElementById('pa').innerHTML=h;
 }
