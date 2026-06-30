@@ -258,6 +258,8 @@ tr:last-child td{border-bottom:none}
 .sbo.show{display:block}
 .loading{text-align:center;padding:60px 0;color:var(--t3)}
 .sp{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 13px}
+.btn-sp{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.45);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:-2px;margin-right:6px}
+button:disabled{opacity:.75;cursor:not-allowed}
 @keyframes spin{to{transform:rotate(360deg)}}
 .empty{text-align:center;padding:52px;color:var(--t3)}
 .empty-ic{font-size:46px;margin-bottom:11px;opacity:.4}
@@ -313,12 +315,10 @@ span[style*="color:rgba(255,193,7"]{color:var(--amber)!important}
           <label>Choose Option *</label>
           <select id="peOption">
             <option value="">Select service…</option>
-            <option>Google Automation</option>
+            <option>HR Implementation</option>
             <option>Recruitment</option>
-            <option>Pay Roll</option>
-            <option>Registration</option>
-            <option>Consultancy</option>
-            <option>Other</option>
+            <option>Payroll Process</option>
+            <option>Others</option>
           </select>
         </div>
         <div class="ff"><label>Company Name *</label><input id="peCompany" placeholder="Your company name"></div>
@@ -355,11 +355,10 @@ span[style*="color:rgba(255,193,7"]{color:var(--amber)!important}
       </div>
       <div class="fsec">Service Requirements</div>
       <div class="srv-chk">
-        <label><input type="checkbox" value="Google Automation" onchange="toggleChk(this)"> Google Automation</label>
+        <label><input type="checkbox" value="HR Implementation" onchange="toggleChk(this)"> HR Implementation</label>
         <label><input type="checkbox" value="Recruitment" onchange="toggleChk(this)"> Recruitment</label>
-        <label><input type="checkbox" value="Pay Roll" onchange="toggleChk(this)"> Pay Roll</label>
-        <label><input type="checkbox" value="Registration" onchange="toggleChk(this)"> Registration</label>
-        <label><input type="checkbox" value="Consultancy" onchange="toggleChk(this)"> Consultancy</label>
+        <label><input type="checkbox" value="Payroll Process" onchange="toggleChk(this)"> Payroll Process</label>
+        <label><input type="checkbox" value="Others" onchange="toggleChk(this)"> Others</label>
       </div>
       <div style="margin-top:22px;display:flex;justify-content:flex-end;gap:10px">
         <button class="btn badd" onclick="submitPubCli()">Register as Client</button>
@@ -444,10 +443,10 @@ span[style*="color:rgba(255,193,7"]{color:var(--amber)!important}
 // ════════════════════════════════════
 //  CONFIG & STATE
 // ════════════════════════════════════
-const API_URL='https://script.google.com/macros/s/AKfycbxD1bBQROV8hhHJ5J4_KgPLcL8TU28oPNeEiaSqI4QzYGLyg4OcGcQ8WrQiNsR428ch/exec';
+const API_URL='https://script.google.com/macros/s/AKfycbw3CYLuc7R6sbwJ5SYItUDm7UC_j3sd-znDEZ3F9QVp5K-vZDouyfR6FnsQVFTysxTp/exec';
 const GAS_OK=API_URL&&!API_URL.includes('YOUR_GAS');
 const PG=12;
-const DEPTS=['Google Automation','Recruitment','Pay Roll','Registration','Consultancy'];
+const DEPTS=['HR Implementation','Recruitment','Payroll Process','Others'];
 
 // ════════════════════════════════════
 //  DATA MAPPERS (GAS sheet → local)
@@ -594,11 +593,11 @@ const LS={
   r(k){localStorage.removeItem(k)}
 };
 
-let USERS=LS.g('lhr_users')||[
-  {id:'USR-001',username:'admin',name:'Admin User',role:'admin',dept:'Management',email:'admin@linkhr.com',password:'Admin@123'},
-  {id:'USR-002',username:'accounts',name:'Accounts Team',role:'accounts',dept:'Accounts',email:'accounts@linkhr.com',password:'Accounts@123'},
-  {id:'USR-003',username:'sales',name:'Sales Executive',role:'employee',dept:'Recruitment',email:'sales@linkhr.com',password:'Sales@123'}
-];
+// NOTE: USERS/COMPANIES are now loaded live from the Google Sheet via gasCall
+// (see rUsers()/rCos()) whenever GAS is connected. The arrays below are only
+// a fallback for the rare case GAS is unreachable, and intentionally contain
+// no real credentials.
+let USERS=LS.g('lhr_users')||[];
 function sUsers(){LS.s('lhr_users',USERS)}
 
 let ENQUIRIES=LS.g('lhr_enq')||[];
@@ -610,10 +609,7 @@ function sCli(){LS.s('lhr_cli',CLIENTS)}
 let REQUESTS=LS.g('lhr_req')||[];
 function sReq(){LS.s('lhr_req',REQUESTS)}
 
-let COMPANIES=LS.g('lhr_cos')||[
-  {id:'CO-001',name:'Link HR Solution Pvt. Ltd.',gstin:'27AABCL1234A1Z5',address:'Mumbai, Maharashtra'},
-  {id:'CO-002',name:'TechCorp India Ltd.',gstin:'29AADCT5432B1ZK',address:'Bengaluru, Karnataka'}
-];
+let COMPANIES=LS.g('lhr_cos')||[];
 function sCos(){LS.s('lhr_cos',COMPANIES)}
 
 // ════════════════════════════════════
@@ -657,8 +653,7 @@ function openM(title,body,foot='',sz=''){
 function closeM(){document.getElementById('mbg').style.display='none'}
 
 function sBadge(s){
-  const m={'New Enquiry':'bNew','Follow Up':'bPend','Converted':'bConv','Lost':'bRej','Closed':'bPend',
-    'New Client':'bNew','Old Client':'bReg','Lost Client':'bRej','Client Registered':'bReg',
+  const m={'New Client':'bNew','Old Client':'bReg','Lost Client':'bRej','Client Registered':'bReg',
     'Active':'bActive','Inactive':'bRej',
     'Pending for PI':'bPend','PI Created':'bPI','Final PI':'bDone','Completed':'bDone','Payment Received':'bActive','Rejected':'bRej','Paid':'bActive','Partial':'bPI','Overdue':'bRej','Pending':'bPend'};
   return`<span class="bdg ${m[s]||'chip'}">${esc(s)}</span>`;
@@ -712,14 +707,32 @@ function showPubEnq(){
 async function submitPubEnq(){
   const opt=v('peOption'),company=v('peCompany'),contact=v('peContact'),mobile=v('peMobile'),email=v('peEmail'),req=v('peReq');
   if(!opt||!company||!contact||!mobile||!email){toast('Fill all required fields','e');return}
+  const submitBtn=[...document.querySelectorAll('#pubEnqWrap button')].find(b=>/Submit Enquiry/i.test(b.textContent));
+  let restoreBtn=null;
+  if(submitBtn){
+    restoreBtn=submitBtn.innerHTML;
+    submitBtn.disabled=true;
+    submitBtn.innerHTML='<span class="btn-sp"></span> Submitting…';
+  }
   let id=eid();
-  if(GAS_OK){
-    const res=await gasCall('submitEnquiry',{option:opt,company,contact,mobile,email,requirement:req});
-    if(res.success) id=res.id;
+  try{
+    if(GAS_OK){
+      const res=await gasCall('submitEnquiry',{option:opt,company,contact,mobile,email,requirement:req});
+      if(res.success){ id=res.id; }
+      else{
+        toast('Submit failed: '+(res.error||'unknown error'),'e');
+        if(submitBtn){submitBtn.disabled=false;submitBtn.innerHTML=restoreBtn;}
+        return;
+      }
+    }
+  }catch(e){
+    toast('Submit failed: '+e.message,'e');
+    if(submitBtn){submitBtn.disabled=false;submitBtn.innerHTML=restoreBtn;}
+    return;
   }
   ENQUIRIES.push({id,option:opt,company,contact,mobile,email,requirement:req,
-    status:'New Enquiry',createdAt:new Date().toISOString(),source:'Public Form',
-    statusHistory:[{status:'New Enquiry',at:new Date().toISOString(),by:'Public Form'}]});
+    status:'New Client',createdAt:new Date().toISOString(),source:'Public Form',
+    statusHistory:[{status:'New Client',at:new Date().toISOString(),by:'Public Form'}]});
   sEnq();
   document.getElementById('pubEnqBody').innerHTML=`
   <div class="pub-success">
@@ -746,11 +759,22 @@ async function submitPubCli(){
     toast('Client already exists with this email or mobile','e');return;
   }
   const services=[...document.querySelectorAll('#pubCliWrap .srv-chk input:checked')].map(x=>x.value);
+  const submitBtn=[...document.querySelectorAll('#pubCliWrap button')].find(b=>/Register|Submit/i.test(b.textContent));
+  let restoreBtn=null;
+  if(submitBtn){
+    restoreBtn=submitBtn.innerHTML;
+    submitBtn.disabled=true;
+    submitBtn.innerHTML='<span class="btn-sp"></span> Submitting…';
+  }
   let id=cid();
   if(GAS_OK){
     const res=await gasCall('submitClient',{company,contact,mobile,email,gst:v('pcGST'),pan:v('pcPAN'),address:v('pcAddr'),services});
     if(res.success) id=res.id;
-    else if(res.error){toast(res.error,'e');return;}
+    else if(res.error){
+      toast(res.error,'e');
+      if(submitBtn){submitBtn.disabled=false;submitBtn.innerHTML=restoreBtn;}
+      return;
+    }
   }
   CLIENTS.push({id,company,contact,mobile,email,gst:v('pcGST'),pan:v('pcPAN'),address:v('pcAddr'),
     services,status:'Client Registered',source:'Public Form',
@@ -814,13 +838,22 @@ function chgPwd(){
   openM('Change Password',`<div class="fg"><div class="ff s2"><label>Current Password</label><input id="cp1" type="password"></div><div class="ff s2"><label>New Password</label><input id="cp2" type="password"></div><div class="ff s2"><label>Confirm</label><input id="cp3" type="password"></div></div>`,
   `<button class="btn bout" onclick="closeM()">Cancel</button><button class="btn badd" onclick="doChgPwd()">Update</button>`);
 }
-function doChgPwd(){
+async function doChgPwd(){
   const o=v('cp1'),n=v('cp2'),c=v('cp3');
   if(!o||!n||!c){toast('Fill all fields','e');return}
   if(n.length<6){toast('Min 6 characters','e');return}
   if(n!==c){toast("Passwords don't match",'e');return}
+  if(GAS_OK){
+    showLoading('Updating password…');
+    const res=await gasCall('changePassword',{oldPassword:o,newPassword:n});
+    hideLoading();
+    if(!res.success){toast(res.error||'Failed to update password','e');return}
+    closeM();toast('Password updated!','s');
+    return;
+  }
+  // Offline fallback only (no GAS connection)
   const idx=USERS.findIndex(x=>x.username===SES.user.username);
-  if(USERS[idx].password!==o){toast('Current password wrong','e');return}
+  if(idx<0||USERS[idx].password!==o){toast('Current password wrong','e');return}
   USERS[idx].password=n;sUsers();closeM();toast('Password updated!','s');
 }
 
@@ -889,7 +922,7 @@ function go(p){
   document.getElementById('tbTitle').textContent=PTITLES[p]||p;
   document.getElementById('pa').innerHTML='<div class="loading"><div class="sp"></div><p>Loading…</p></div>';
   if(window.innerWidth<768){document.getElementById('sb').classList.remove('open');document.getElementById('sbo').classList.remove('show')}
-  const fn=PFNS[p];if(fn)setTimeout(fn,40);
+  const fn=PFNS[p];if(fn)fn();
 }
 function toggleSB(){document.getElementById('sb').classList.toggle('open');document.getElementById('sbo').classList.toggle('show')}
 
@@ -900,7 +933,7 @@ function rDash(){
   const u=SES.user,isAcc=u.role==='accounts'||u.role==='admin';
   const myEnq=ENQUIRIES.filter(e=>isAcc||e.createdBy===u.id);
   const myReq=REQUESTS.filter(r=>isAcc||r.byId===u.id);
-  const tEnq=ENQUIRIES.length,nEnq=ENQUIRIES.filter(e=>e.status==='New Enquiry').length;
+  const tEnq=ENQUIRIES.length,nEnq=ENQUIRIES.filter(e=>e.status==='New Client').length;
   const tCli=CLIENTS.length,pPi=REQUESTS.filter(r=>r.status==='Pending for PI').length;
   const piC=REQUESTS.filter(r=>r.status==='PI Created').length,done=REQUESTS.filter(r=>r.status==='Completed').length;
   const tAmt=REQUESTS.filter(r=>r.status==='Completed').reduce((a,r)=>a+(+r.amount||0),0);
@@ -957,19 +990,18 @@ function rDash(){
 let eP=1,eSr='',eSt='';
 async function rEnq(){
   eP=1;eSr='';eSt='';
+  dEnq();
   if(GAS_OK){
-    document.getElementById('pa').innerHTML='<div class="loading"><div class="sp"></div><p>Loading enquiries…</p></div>';
     try{
       const res=await gasCall('getEnquiries',{});
       if(res.success){
         ENQUIRIES=mapEnquiries(res.data);
+        dEnq();
       } else if(res.error&&!res.error.includes('Session')) {
-        toast('Failed to load enquiries: '+res.error,'e');
         console.error('getEnquiries:',res.error);
       }
-    }catch(e){toast('Error: '+e.message,'e');}
+    }catch(e){console.error('Error:',e.message);}
   }
-  dEnq();
 }
 function dEnq(){
   let rows=[...ENQUIRIES].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
@@ -986,15 +1018,13 @@ function dEnq(){
   <div class="tbar">
     <div class="srch"><input placeholder="Search ID, company, mobile, email…" oninput="eSr=this.value;eP=1;dEnq()" value="${esc(eSr)}"></div>
     <select class="fsel" onchange="eSt=this.value;eP=1;dEnq()">
-      <option value="">All Status</option><option>New Enquiry</option><option>Follow Up</option>
-      <option>New Client</option><option>Old Client</option><option>Lost Client</option>
-      <option>Converted</option><option>Closed</option>
+      <option value="">All Status</option><option>New Client</option><option>Old Client</option><option>Lost Client</option>
     </select>
   </div>
   <div class="tw"><table><tr><th>Enquiry ID</th><th>Company</th><th>Contact</th><th>Mobile</th><th>Email</th><th>Service</th><th>Status</th><th>Date</th><th>Actions</th></tr>`;
   if(!pg.length)h+=`<tr><td colspan="9"><div class="empty"><div class="empty-ic">&#8709;</div><p style="color:var(--t3);font-size:14px">No enquiries found</p></div></td></tr>`;
   pg.forEach(r=>{
-    const canConv=r.status!=='Converted'&&r.status!=='Lost';
+    const canConv=r.status!=='Old Client';
     const dtStr=r.createdAt?new Date(r.createdAt).toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):fd(r.createdAt);
     h+=`<tr><td><strong style="color:var(--primary);font-weight:700">${esc(r.id)}</strong></td><td>${esc(r.company)}</td><td>${esc(r.contact)}</td><td>${esc(r.mobile)}</td><td style="font-size:12px">${esc(r.email)}</td><td><span class="chip">${esc(r.option||'—')}</span></td><td>${sBadge(r.status)}</td><td style="font-size:12px">${dtStr}</td>
     <td><div class="act">
@@ -1017,21 +1047,15 @@ function enqForm(id=''){
   <div class="fg">
     <div class="ff"><label>Service Required *</label><select id="eOpt">
       <option value="">Select service…</option>
-      <option ${r.option==='Google Automation'?'selected':''}>Google Automation</option>
+      <option ${r.option==='HR Implementation'?'selected':''}>HR Implementation</option>
       <option ${r.option==='Recruitment'?'selected':''}>Recruitment</option>
-      <option ${r.option==='Pay Roll'?'selected':''}>Pay Roll</option>
-      <option ${r.option==='Registration'?'selected':''}>Registration</option>
-      <option ${r.option==='Consultancy'?'selected':''}>Consultancy</option>
-      <option ${r.option==='Other'?'selected':''}>Other</option>
+      <option ${r.option==='Payroll Process'?'selected':''}>Payroll Process</option>
+      <option ${r.option==='Others'?'selected':''}>Others</option>
     </select></div>
     <div class="ff"><label>Status</label><select id="eStat">
-      <option ${r.status==='New Enquiry'||!r.status?'selected':''}>New Enquiry</option>
-      <option ${r.status==='Follow Up'?'selected':''}>Follow Up</option>
-      <option ${r.status==='New Client'?'selected':''}>New Client</option>
+      <option ${r.status==='New Client'||!r.status?'selected':''}>New Client</option>
       <option ${r.status==='Old Client'?'selected':''}>Old Client</option>
       <option ${r.status==='Lost Client'?'selected':''}>Lost Client</option>
-      <option ${r.status==='Converted'?'selected':''}>Converted</option>
-      <option ${r.status==='Closed'?'selected':''}>Closed</option>
     </select></div>
     <div class="ff"><label>Company Name *</label><input id="eCo" value="${esc(r.company||'')}"></div>
     <div class="ff"><label>Contact Person *</label><input id="eCt" value="${esc(r.contact||'')}"></div>
@@ -1052,11 +1076,11 @@ async function saveEnq(id){
     hideLoading();
     if(!res.success){toast('Save failed: '+(res.error||'unknown error'),'e');return}
     if(!id&&res.id) id=res.id;
-    // Reload from GAS immediately after save
-    try{
-      const fresh=await gasCall('getEnquiries',{});
-      if(fresh.success) ENQUIRIES=mapEnquiries(fresh.data);
-    }catch(_){}
+    // Merge into local cache instead of re-fetching the whole sheet (faster)
+    const now=new Date().toISOString();
+    const idx=ENQUIRIES.findIndex(x=>x.id===id);
+    if(idx>=0){ ENQUIRIES[idx]={...ENQUIRIES[idx],option:opt,company:co,contact:ct,mobile:mb,email:em,status:st,requirement:rq,updatedAt:now}; }
+    else{ ENQUIRIES.unshift({id,option:opt,company:co,contact:ct,mobile:mb,email:em,status:st||'New Enquiry',requirement:rq,createdAt:now,updatedAt:now,createdBy:SES.user.id,source:'Internal',statusHistory:[]}); }
     sEnq();closeM();toast(id?'Enquiry updated ✅':'Enquiry created ✅','s');dEnq();return;
   }
   if(id){
@@ -1066,9 +1090,9 @@ async function saveEnq(id){
   } else {
     const nid=id||eid();
     const now=new Date().toISOString();
-    ENQUIRIES.push({id:nid,option:opt,company:co,contact:ct,mobile:mb,email:em,status:st||'New Enquiry',
+    ENQUIRIES.push({id:nid,option:opt,company:co,contact:ct,mobile:mb,email:em,status:st||'New Client',
       requirement:rq,createdAt:now,updatedAt:now,createdBy:SES.user.id,source:'Internal',
-      statusHistory:[{status:st||'New Enquiry',by:SES.user.name,at:now}]});
+      statusHistory:[{status:st||'New Client',by:SES.user.name,at:now}]});
   }
   sEnq();closeM();toast(id?'Enquiry updated':'Enquiry created','s');rEnq();
 }
@@ -1089,7 +1113,7 @@ function viewEnq(id){
   ${r.requirement?`<div style="margin-top:10px"><div class="ii"><label>Requirement</label><span>${esc(r.requirement)}</span></div></div>`:''}
   <div class="fsec">Status History</div>
   <div class="tl">${(r.statusHistory||[]).map(h=>`<div class="tli"><div class="tld done">✅</div><div class="tli-i"><strong>${esc(h.status)}</strong><span>${fd(h.at)} • ${esc(h.by||'—')}</span></div></div>`).join('')}</div>`,
-  `<button class="btn bout" onclick="closeM()">Close</button><button class="btn badd" onclick="closeM();enqForm('${id}')">✏️ Edit</button>${r.status!=='Converted'?`<button class="btn bteal" onclick="closeM();convToClient('${id}')">Convert to Client</button>`:''}`,
+  `<button class="btn bout" onclick="closeM()">Close</button><button class="btn badd" onclick="closeM();enqForm('${id}')">✏️ Edit</button>${r.status!=='Old Client'?`<button class="btn bteal" onclick="closeM();convToClient('${id}')">Convert to Client</button>`:''}`,
   'lg');
 }
 function delEnq(id){if(!confirm('Delete this enquiry?'))return;ENQUIRIES=ENQUIRIES.filter(x=>x.id!==id);sEnq();toast('Deleted','s');dEnq()}
@@ -1111,11 +1135,10 @@ function convToClient(enqId){
   </div>
   <div class="fsec">Service Requirements</div>
   <div class="srv-chk">
-    <label><input type="checkbox" value="Google Automation" onchange="toggleChk(this)"> Google Automation</label>
+    <label><input type="checkbox" value="HR Implementation" onchange="toggleChk(this)"> HR Implementation</label>
     <label><input type="checkbox" value="Recruitment" onchange="toggleChk(this)"> Recruitment</label>
-    <label><input type="checkbox" value="Pay Roll" onchange="toggleChk(this)"> Pay Roll</label>
-    <label><input type="checkbox" value="Registration" onchange="toggleChk(this)"> Registration</label>
-    <label><input type="checkbox" value="Consultancy" onchange="toggleChk(this)"> Consultancy</label>
+    <label><input type="checkbox" value="Payroll Process" onchange="toggleChk(this)"> Payroll Process</label>
+    <label><input type="checkbox" value="Others" onchange="toggleChk(this)"> Others</label>
   </div>`,
   `<button class="btn bout" onclick="closeM()">Cancel</button><button class="btn bteal" onclick="doConv('${enqId}')">✅ Register as Client</button>`,'lg');
 }
@@ -1136,8 +1159,8 @@ async function doConv(enqId){
     statusHistory:[{status:'Client Registered',by:SES.user.name,at:new Date().toISOString(),note:`Converted from ${enqId}`}]});
   sCli();
   const ei=ENQUIRIES.findIndex(x=>x.id===enqId);
-  if(ei>=0){ENQUIRIES[ei].status='Converted';ENQUIRIES[ei].linkedClientId=id;
-  ENQUIRIES[ei].statusHistory.push({status:'Converted',by:SES.user.name,at:new Date().toISOString(),note:`Client ${id} created`});}
+  if(ei>=0){ENQUIRIES[ei].status='Old Client';ENQUIRIES[ei].linkedClientId=id;
+  ENQUIRIES[ei].statusHistory.push({status:'Old Client',by:SES.user.name,at:new Date().toISOString(),note:`Client ${id} created`});}
   sEnq();closeM();toast(`Client ${id} registered! ✅`,'s');go('clients');setTimeout(rClients,300);
 }
 
@@ -1147,19 +1170,18 @@ async function doConv(enqId){
 let cP=1,cSr='',cSt='';
 async function rClients(){
   cP=1;cSr='';cSt='';
+  dClients();
   if(GAS_OK){
-    document.getElementById('pa').innerHTML='<div class="loading"><div class="sp"></div><p>Loading clients…</p></div>';
     try{
       const res=await gasCall('getClients',{});
       if(res.success){
         CLIENTS=mapClients(res.data);
+        dClients();
       } else if(res.error&&!res.error.includes('Session')) {
-        toast('Failed to load clients: '+res.error,'e');
         console.error('getClients:',res.error);
       }
-    }catch(e){toast('Error: '+e.message,'e');}
+    }catch(e){console.error('Error:',e.message);}
   }
-  dClients();
 }
 function dClients(){
   let rows=[...CLIENTS].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
@@ -1203,7 +1225,7 @@ function cpg(p){cP=p;dClients()}
 
 function cliForm(id=''){
   const r=id?CLIENTS.find(x=>x.id===id):{};const isE=!!r.id;
-  const srvList=['Google Automation','Recruitment','Pay Roll','Registration','Consultancy'];
+  const srvList=['HR Implementation','Recruitment','Payroll Process','Others'];
   const states=['Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat','Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal','Delhi','Jammu & Kashmir','Ladakh','Chandigarh','Puducherry','Other'];
   const stateOpts=states.map(s=>`<option ${(r.state||'')=== s?'selected':''}>${s}</option>`).join('');
   openM(isE?`Edit Client: ${id}`:'Add Client',`
@@ -1306,7 +1328,10 @@ async function saveCli(id){
     hideLoading();
     if(!res.success){toast('Save failed: '+(res.error||'unknown error'),'e');return}
     if(!id&&res.id) id=res.id;
-    try{const fresh=await gasCall('getClients',{});if(fresh.success)CLIENTS=mapClients(fresh.data);}catch(_){}
+    // Merge into local cache instead of re-fetching the whole sheet (faster)
+    const idx=CLIENTS.findIndex(x=>x.id===id);
+    if(idx>=0){ CLIENTS[idx]={...CLIENTS[idx],...payload,updatedAt:new Date().toISOString()}; }
+    else{ CLIENTS.unshift({id,...payload,createdAt:new Date().toISOString(),enquiryId:'',statusHistory:[]}); }
     sCli();closeM();toast(id?'Client updated ✅':'Client added ✅','s');dClients();return;
   }
   if(id){
@@ -1380,7 +1405,7 @@ function rNewReq(){
     <div class="fg">
       <div class="ff"><label>Employee Name (Requested By) *</label><select id="rBy"><option value="">Select Employee…</option>${empOpts}</select></div>
       <div class="ff"><label>Bill Requested By (Admin) *</label><select id="rReqBy"><option value="">Select Admin…</option>${adminOpts}</select></div>
-      <div class="ff"><label>Department</label><input id="rDept" value="${esc(u.dept||'')}" readonly></div>
+      <div class="ff"><label>Department</label><input id="rDept" value="${esc(Array.isArray(u.dept)?u.dept.join(', '):(u.dept||''))}" readonly></div>
       <div class="ff"><label>Bill Request Date *</label><input id="rDate" type="date" value="${tod()}"></div>
       <div class="ff"><label>Billing Amount (₹) *</label><input id="rAmt" type="number" placeholder="0.00" min="0"></div>
     </div>
@@ -1447,13 +1472,13 @@ async function submitReq(){
 let mP=1,mSr='',mSt2='';
 async function rMyReq(){
   mP=1;mSr='';mSt2='';
+  dMyReq();
   if(GAS_OK){
     try{
       const res=await gasCall('getRequests',{});
-      if(res.success) REQUESTS=mapRequests(res.data||[]);
+      if(res.success){REQUESTS=mapRequests(res.data||[]);dMyReq();}
     }catch(e){console.warn('GAS load error:',e);}
   }
-  dMyReq();
 }
 function dMyReq(){
   let rows=[...REQUESTS].filter(r=>SES.user.role!=='employee'||r.byId===SES.user.id).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
@@ -1493,13 +1518,13 @@ function dlFile(id,type){const r=REQUESTS.find(x=>x.id===id);if(!r)return;const 
 let aP=1,aSr='',aSt='',aDept='';
 async function rAllReq(){
   aP=1;aSr='';aSt='';aDept='';
+  dAllReq();
   if(GAS_OK){
     try{
       const res=await gasCall('getRequests',{});
-      if(res.success) REQUESTS=mapRequests(res.data||[]);
+      if(res.success){REQUESTS=mapRequests(res.data||[]);dAllReq();}
     }catch(e){console.warn('GAS load error:',e);}
   }
-  dAllReq();
 }
 function dAllReq(){
   let rows=[...REQUESTS].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
@@ -1578,13 +1603,13 @@ function viewReq(id){
 let piP=1,piSr='';
 async function rPI(){
   piP=1;piSr='';
+  dPI();
   if(GAS_OK){
     try{
       const res=await gasCall('getRequests',{});
-      if(res.success) REQUESTS=mapRequests(res.data||[]);
+      if(res.success){REQUESTS=mapRequests(res.data||[]);dPI();}
     }catch(e){console.warn('GAS load error:',e);}
   }
-  dPI();
 }
 function dPI(){
   let rows=REQUESTS.filter(r=>r.status==='Pending for PI'||r.status==='PI Created'||r.status==='Final PI').sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
@@ -1742,7 +1767,8 @@ async function savePI(reqId){
   const base=r.amount||0,gstAmt=base*gstRate/100,total=base+gstAmt;
   if(GAS_OK){
     showLoading('Creating PI…');
-    const res=await gasCall('createPI',{reqId,piNumber:num,piDate:dt,validUntil:v('pValid'),gstRate,gstAmt,total,notes,isFinal,fileUrl:fd2?'[file attached]':''});
+    const res=await gasCall('createPI',{reqId,piNumber:num,piDate:dt,validUntil:v('pValid'),gstRate,gstAmt,total,notes,isFinal,
+      fileData:fd2||'',fileName:fi.files.length?fi.files[0].name:''});
     hideLoading();
     if(!res.success){toast(res.error||'Failed','e');return}
   }
@@ -1772,13 +1798,13 @@ async function savePI(reqId){
 let ivP=1,ivSr='';
 async function rInv(){
   ivP=1;ivSr='';
+  dInv();
   if(GAS_OK){
     try{
       const res=await gasCall('getRequests',{});
-      if(res.success) REQUESTS=mapRequests(res.data||[]);
+      if(res.success){REQUESTS=mapRequests(res.data||[]);dInv();}
     }catch(e){console.warn('GAS load error:',e);}
   }
-  dInv();
 }
 function dInv(){
   let rows=REQUESTS.filter(r=>r.status==='Final PI').sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
@@ -1831,7 +1857,8 @@ async function saveInv(reqId){
   if(fi.files.length){try{fd3=await fileToB64(fi.files[0])}catch{toast('File error','e');return}}
   if(GAS_OK){
     showLoading('Uploading invoice…');
-    const res=await gasCall('uploadInvoice',{reqId,company:co,tallyInv:tally,invoiceDate:dt,amountGST:+amt,fileUrl:fd3?'[file attached]':''});
+    const res=await gasCall('uploadInvoice',{reqId,company:co,tallyInv:tally,invoiceDate:dt,amountGST:+amt,
+      fileData:fd3||'',fileName:fi.files.length?fi.files[0].name:''});
     hideLoading();
     if(!res.success){toast(res.error||'Failed','e');return}
   }
@@ -1845,7 +1872,10 @@ async function saveInv(reqId){
 //  PAYMENTS PAGE
 // ════════════════════════════════════
 async function rPayments(){
-  if(GAS_OK){try{const res=await gasCall('getRequests',{});if(res.success)REQUESTS=mapRequests(res.data||[]);}catch(e){}}
+  dPayments();
+  if(GAS_OK){try{const res=await gasCall('getRequests',{});if(res.success){REQUESTS=mapRequests(res.data||[]);dPayments();}}catch(e){}}
+}
+function dPayments(){
   const rows=REQUESTS.filter(r=>r.status==='Completed'||r.status==='Payment Received'||r.paymentStatus)
     .sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
   const paid=rows.filter(r=>r.paymentStatus==='Paid');
@@ -1952,8 +1982,8 @@ async function savePayment(reqId){
 //  REPORTS
 // ════════════════════════════════════
 function rRep(){
-  const enqTotal=ENQUIRIES.length,enqNew=ENQUIRIES.filter(e=>e.status==='New Enquiry').length;
-  const enqConv=ENQUIRIES.filter(e=>e.status==='Converted').length;
+  const enqTotal=ENQUIRIES.length,enqNew=ENQUIRIES.filter(e=>e.status==='New Client').length;
+  const enqConv=ENQUIRIES.filter(e=>e.status==='Old Client').length;
   const cliTotal=CLIENTS.length;
   const reqTotal=REQUESTS.length,reqPend=REQUESTS.filter(r=>r.status==='Pending for PI').length;
   const reqPI=REQUESTS.filter(r=>r.status==='PI Created').length,reqDone=REQUESTS.filter(r=>r.status==='Completed').length;
@@ -1969,7 +1999,7 @@ function rRep(){
   <div class="sg">
     <div class="sc c1"><div class="sc-ic">&#9776;</div><div class="sc-l">Total Enquiries</div><div class="sc-v">${enqTotal}</div></div>
     <div class="sc c2"><div class="sc-ic">&#x2B;</div><div class="sc-l">New Enquiries</div><div class="sc-v">${enqNew}</div></div>
-    <div class="sc c3"><div class="sc-ic">&#x2714;</div><div class="sc-l">Converted</div><div class="sc-v">${enqConv}</div></div>
+    <div class="sc c3"><div class="sc-ic">&#x2714;</div><div class="sc-l">Old Client</div><div class="sc-v">${enqConv}</div></div>
     <div class="sc c3"><div class="sc-ic">&#9678;</div><div class="sc-l">Clients</div><div class="sc-v">${cliTotal}</div></div>
     <div class="sc c6"><div class="sc-ic">&#9202;</div><div class="sc-l">Pending PI</div><div class="sc-v">${reqPend}</div></div>
     <div class="sc c5"><div class="sc-ic">&#10003;</div><div class="sc-l">Completed</div><div class="sc-v">${reqDone}</div></div>
@@ -2005,13 +2035,27 @@ function rRep(){
 // ════════════════════════════════════
 //  USERS
 // ════════════════════════════════════
-function rUsers(){
+async function loadUsers(){
+  if(!GAS_OK)return USERS;
+  const res=await gasCall('getUsers',{});
+  if(res.success){
+    USERS=res.data.map(u=>({id:u.UserID,username:u.Username,name:u.Name,role:u.Role,
+      dept:(u.Dept||'').split(',').map(s=>s.trim()).filter(Boolean),email:u.Email,
+      empId:u.EmpID||'',designation:u.Designation||'',mobile:u.Mobile||'',doj:u.DOJ||''}));
+  } else {
+    toast('Failed to load users: '+(res.error||''),'e');
+  }
+  return USERS;
+}
+async function rUsers(){
+  document.getElementById('pa').innerHTML='<div class="loading"><div class="sp"></div><p>Loading…</p></div>';
+  await loadUsers();
   let h=`<div class="ph"><h2>User Management</h2>
-  <div class="ph-act"><button class="btn bexp" onclick="xls(USERS.map(u=>({ID:u.id,Username:u.username,Name:u.name,Role:u.role,Dept:u.dept,Email:u.email})),'users')">Export Excel</button>
+  <div class="ph-act"><button class="btn bexp" onclick="xls(USERS.map(u=>({ID:u.id,Username:u.username,Name:u.name,Role:u.role,Dept:Array.isArray(u.dept)?u.dept.join(', '):u.dept,Email:u.email})),'users')">Export Excel</button>
   <button class="btn badd" onclick="uForm()">+ Add User</button></div></div>
   <div class="card"><div class="tw"><table><tr><th>Username</th><th>Name</th><th>Role</th><th>Department</th><th>Email</th><th>Actions</th></tr>`;
   USERS.forEach(u=>h+=`<tr><td><strong>${esc(u.username)}</strong></td><td>${esc(u.name)}</td><td>${rBadge(u.role)}</td>
-  <td><span class="chip">${esc(u.dept||'—')}</span></td><td style="font-size:12px">${esc(u.email||'—')}</td>
+  <td>${(Array.isArray(u.dept)?u.dept:(u.dept?[u.dept]:[])).map(d=>`<span class="chip">${esc(d)}</span>`).join(' ')||'—'}</td><td style="font-size:12px">${esc(u.email||'—')}</td>
   <td><div class="act"><button class="ib" onclick="uForm('${u.id}')">✏️ Edit</button>
   ${u.id!==SES.user.id?`<button class="ib rd" onclick="delU('${u.id}')">Delete</button>`:''}</div></td></tr>`);
   h+=`</table></div></div>`;
@@ -2019,52 +2063,80 @@ function rUsers(){
 }
 function uForm(id=''){
   const u=id?USERS.find(x=>x.id===id):{};const isE=!!u.id;
-  const deptOpts2=DEPTS.map(d=>`<option ${(u.dept||'')=== d?'selected':''}>${d}</option>`).join('');
+  const curDepts=Array.isArray(u.dept)?u.dept:(u.dept?[u.dept]:[]);
+  const deptChk=DEPTS.map(d=>`<label><input type="checkbox" value="${esc(d)}" onchange="toggleChk(this)" ${curDepts.includes(d)?'checked':''}> ${esc(d)}</label>`).join('');
   openM(isE?'Edit User':'Add User',`<div class="fg">
     <div class="ff"><label>Username *</label><input id="uU" value="${esc(u.username||'')}" ${isE?'readonly':''}></div>
     <div class="ff"><label>Full Name *</label><input id="uN" value="${esc(u.name||'')}"></div>
     <div class="ff"><label>Employee ID</label><input id="uEmpId" value="${esc(u.empId||'')}"></div>
     <div class="ff"><label>Designation</label><input id="uDesig" value="${esc(u.designation||'')}"></div>
     <div class="ff"><label>Role *</label><select id="uR"><option value="employee">Employee</option><option value="accounts">Accounts</option><option value="admin">Admin</option></select></div>
-    <div class="ff"><label>Department / Service *</label><select id="uD"><option value="">Select…</option>${deptOpts2}</select></div>
     <div class="ff s2"><label>Email</label><input id="uE" type="email" value="${esc(u.email||'')}"></div>
     <div class="ff"><label>Mobile</label><input id="uMob" value="${esc(u.mobile||'')}"></div>
     <div class="ff"><label>Date of Joining</label><input id="uDOJ" type="date" value="${esc(u.doj||'')}"></div>
     <div class="ff s2"><label>${isE?'New Password (blank=no change)':'Password *'}</label><input id="uP" type="password" placeholder="min 6 chars"></div>
-  </div>`,
+  </div>
+  <div class="fsec">Department / Service Access *</div>
+  <div class="srv-chk" id="uDeptChk">${deptChk}</div>`,
   `<button class="btn bout" onclick="closeM()">Cancel</button><button class="btn badd" onclick="saveU('${id}')">Save User</button>`,'lg');
-  if(isE)setTimeout(()=>{document.getElementById('uR').value=u.role||'employee';document.getElementById('uD').value=u.dept||'';},50);
+  if(isE)setTimeout(()=>{document.getElementById('uR').value=u.role||'employee';},50);
 }
-function saveU(id){
-  const un=v('uU'),nm=v('uN'),rl=v('uR'),dp=v('uD'),em=v('uE'),pw=v('uP');
+async function saveU(id){
+  const un=v('uU'),nm=v('uN'),rl=v('uR'),em=v('uE'),pw=v('uP');
+  const dp=[...document.querySelectorAll('#uDeptChk input:checked')].map(x=>x.value);
   if(!un||!nm){toast('Username and name required','e');return}
+  if(!dp.length){toast('Select at least one Department / Service','e');return}
   if(!id&&!pw){toast('Password required','e');return}
   if(pw&&pw.length<6){toast('Min 6 chars','e');return}
   const extra={empId:v('uEmpId'),designation:v('uDesig'),mobile:v('uMob'),doj:v('uDOJ')};
+  if(GAS_OK){
+    showLoading('Saving user…');
+    const res=await gasCall('saveUser',{id,username:un,name:nm,role:rl,dept:dp.join(','),email:em,password:pw,...extra});
+    hideLoading();
+    if(!res.success){toast(res.error||'Failed to save user','e');return}
+    closeM();toast('Saved','s');rUsers();
+    return;
+  }
+  // Offline fallback only
   if(id){const idx=USERS.findIndex(x=>x.id===id);USERS[idx]={...USERS[idx],name:nm,role:rl,dept:dp,email:em,...extra};if(pw)USERS[idx].password=pw;}
   else{if(USERS.find(x=>x.username===un)){toast('Username exists','e');return}USERS.push({id:'USR-'+Date.now(),username:un,name:nm,role:rl,dept:dp,email:em,password:pw,...extra});}
   sUsers();closeM();toast('Saved','s');rUsers();
 }
-function delU(id){if(!confirm('Delete user?'))return;USERS=USERS.filter(x=>x.id!==id);sUsers();toast('Deleted','s');rUsers()}
+async function delU(id){
+  if(!confirm('Delete user?'))return;
+  if(GAS_OK){
+    showLoading('Deleting…');
+    const res=await gasCall('deleteUser',{id});
+    hideLoading();
+    if(!res.success){toast(res.error||'Failed to delete user','e');return}
+    toast('Deleted','s');rUsers();
+    return;
+  }
+  USERS=USERS.filter(x=>x.id!==id);sUsers();toast('Deleted','s');rUsers()
+}
 
 // ════════════════════════════════════
 //  EMPLOYEE MASTER
 // ════════════════════════════════════
-function rEmployees(){
+async function rEmployees(){
+  document.getElementById('pa').innerHTML='<div class="loading"><div class="sp"></div><p>Loading…</p></div>';
+  await loadUsers();
   const expData=USERS.map(u=>({
     'Emp ID':u.empId||'','Name':u.name,'Username':u.username,
-    'Designation':u.designation||'','Department':u.dept||'',
+    'Designation':u.designation||'','Department':Array.isArray(u.dept)?u.dept.join(', '):(u.dept||''),
     'Email':u.email||'','Mobile':u.mobile||'',
     'Date of Joining':u.doj||'','Role':u.role
   }));
+  window._empExport=expData; // avoid embedding raw JSON inside an HTML attribute (broke on quotes)
   let h=`<div class="ph"><h2>Employee Master</h2>
   <div class="ph-act">
-    <button class="btn bexp" onclick="xls(${JSON.stringify(expData).replace(/'/g,"\'")},'employees')">Export Excel</button>
+    <button class="btn bexp" onclick="xls(window._empExport,'employees')">Export Excel</button>
     <button class="btn badd" onclick="uForm()">+ Add Employee</button>
   </div></div>
   <div class="sg">
-    ${DEPTS.map(d=>{const n=USERS.filter(u=>u.dept===d).length;return`<div class="sc c1"><div class="sc-ic">&#9678;</div><div class="sc-l">${esc(d)}</div><div class="sc-v">${n}</div></div>`}).join('')}
+    ${DEPTS.map(d=>{const n=USERS.filter(u=>Array.isArray(u.dept)?u.dept.includes(d):u.dept===d).length;return`<div class="sc c1"><div class="sc-ic">&#9678;</div><div class="sc-l">${esc(d)}</div><div class="sc-v">${n}</div></div>`}).join('')}
   </div>
+
   <div class="card"><div class="tw"><table>
     <tr><th>Emp ID</th><th>Name</th><th>Designation</th><th>Department</th><th>Email</th><th>Mobile</th><th>DOJ</th><th>Role</th><th>Actions</th></tr>`;
   if(!USERS.length)h+=`<tr><td colspan="9" class="empty">No employees</td></tr>`;
@@ -2072,7 +2144,7 @@ function rEmployees(){
     <td><span class="chip">${esc(u.empId||'—')}</span></td>
     <td><strong>${esc(u.name)}</strong></td>
     <td>${esc(u.designation||'—')}</td>
-    <td><span class="chip">${esc(u.dept||'—')}</span></td>
+    <td>${(Array.isArray(u.dept)?u.dept:(u.dept?[u.dept]:[])).map(d=>`<span class="chip">${esc(d)}</span>`).join(' ')||'—'}</td>
     <td style="font-size:12px">${esc(u.email||'—')}</td>
     <td>${esc(u.mobile||'—')}</td>
     <td>${fd(u.doj)}</td>
@@ -2086,7 +2158,16 @@ function rEmployees(){
 }
 
 // COMPANIES
-function rCos(){
+async function rCos(){
+  document.getElementById('pa').innerHTML='<div class="loading"><div class="sp"></div><p>Loading…</p></div>';
+  if(GAS_OK){
+    const res=await gasCall('getCompanies',{});
+    if(res.success){
+      COMPANIES=res.data.map(c=>({id:c.CoID,name:c.Name,gstin:c.GSTIN,address:c.Address}));
+    } else {
+      toast('Failed to load companies: '+(res.error||''),'e');
+    }
+  }
   let h=`<div class="ph"><h2>Companies</h2><button class="btn badd" onclick="coForm()">+ Add</button></div>
   <div class="card"><div class="tw"><table><tr><th>ID</th><th>Company Name</th><th>GSTIN</th><th>Address</th><th>Actions</th></tr>`;
   COMPANIES.forEach(c=>h+=`<tr><td><span class="chip">${esc(c.id)}</span></td><td><strong>${esc(c.name)}</strong></td>
@@ -2103,13 +2184,32 @@ function coForm(id=''){
     <div class="ff"><label>Address</label><input id="cA" value="${esc(c.address||'')}"></div>
   </div>`,`<button class="btn bout" onclick="closeM()">Cancel</button><button class="btn badd" onclick="saveCo('${id}')">Save</button>`);
 }
-function saveCo(id){
+async function saveCo(id){
   const nm=v('cN');if(!nm){toast('Name required','e');return}
+  if(GAS_OK){
+    showLoading('Saving company…');
+    const res=await gasCall('saveCompany',{id,name:nm,gstin:v('cG'),address:v('cA')});
+    hideLoading();
+    if(!res.success){toast(res.error||'Failed to save company','e');return}
+    closeM();toast('Saved','s');rCos();
+    return;
+  }
   if(id){const idx=COMPANIES.findIndex(x=>x.id===id);COMPANIES[idx]={...COMPANIES[idx],name:nm,gstin:v('cG'),address:v('cA')};}
   else COMPANIES.push({id:'CO-'+Date.now(),name:nm,gstin:v('cG'),address:v('cA')});
   sCos();closeM();toast('Saved','s');rCos();
 }
-function delCo(id){if(!confirm('Delete?'))return;COMPANIES=COMPANIES.filter(x=>x.id!==id);sCos();toast('Deleted','s');rCos()}
+async function delCo(id){
+  if(!confirm('Delete?'))return;
+  if(GAS_OK){
+    showLoading('Deleting…');
+    const res=await gasCall('deleteCompany',{id});
+    hideLoading();
+    if(!res.success){toast(res.error||'Failed to delete company','e');return}
+    toast('Deleted','s');rCos();
+    return;
+  }
+  COMPANIES=COMPANIES.filter(x=>x.id!==id);sCos();toast('Deleted','s');rCos()
+}
 </script>
 </body>
 </html>
