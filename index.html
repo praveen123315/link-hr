@@ -539,27 +539,12 @@ async function gasCall(action, data={}) {
   }
 }
 
-// ── Silent re-login using saved credentials ─────────────────────────────
-async function _relogin() {
-  try {
-    // Get saved credentials from sessionStorage
-    const creds = JSON.parse(sessionStorage.getItem('lhr_creds') || 'null');
-    if (!creds) return false;
-    const res = await fetch(API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ action: 'login', username: creds.u, password: creds.p })
-    });
-    const json = JSON.parse(await res.text());
-    if (json.success) {
-      SES = { token: json.token, user: json.user };
-      sessionStorage.setItem('lhr_ses', JSON.stringify(SES));
-      console.log('Auto re-login successful');
-      return true;
-    }
-  } catch(e) { console.error('Re-login failed:', e); }
-  return false;
-}
+// ── Silent re-login is intentionally NOT supported. Caching the plaintext
+// password in sessionStorage to allow this was a security hole (any XSS or
+// shared-machine access could read it back out). Sessions already last 24h
+// server-side, so on real expiry we just send the user back to the login
+// screen via gasCall()'s existing "Session expired" handling.
+async function _relogin() { return false; }
 
 // ── Debug: test GAS connection ──
 async function testGAS(){
@@ -687,6 +672,74 @@ function prevFile(inp,prevId){
 function toggleChk(cb){cb.closest('label').classList.toggle('checked',cb.checked)}
 
 // ════════════════════════════════════
+//  PAGE PAINT (fixes search-box losing focus on every keystroke,
+//  and stops stale/old-page data flashing into the wrong screen)
+// ════════════════════════════════════
+let CUR_PAGE='';   // which module is currently on screen
+function paintPA(html){
+  const pa=document.getElementById('pa');
+  const ae=document.activeElement;
+  let fid=null,selS=null,selE=null;
+  if(ae&&pa.contains(ae)&&ae.id){
+    fid=ae.id;
+    if('selectionStart' in ae){try{selS=ae.selectionStart;selE=ae.selectionEnd;}catch(_){}}
+  }
+  pa.innerHTML=html;
+  if(fid){
+    const el=document.getElementById(fid);
+    if(el){
+      el.focus();
+      if(selS!=null&&el.setSelectionRange){try{el.setSelectionRange(selS,selE);}catch(_){}}
+    }
+  }
+}
+// Guard used by every module's loader: bail out of an in-flight fetch
+// if the user has already navigated to a different page, so old data
+// can never get painted on top of the new page.
+function stillOn(page){return CUR_PAGE===page}
+
+// ── Date-range filter (Today / Yesterday / This Week / This Month) ──
+function inDateRange(dateStr,key){
+  if(!key)return true;
+  if(!dateStr)return false;
+  const d=new Date(dateStr);if(isNaN(d))return false;
+  const now=new Date();
+  const sod=dt=>new Date(dt.getFullYear(),dt.getMonth(),dt.getDate());
+  const today=sod(now);
+  if(key==='today')return sod(d).getTime()===today.getTime();
+  if(key==='yesterday'){const y=new Date(today);y.setDate(y.getDate()-1);return sod(d).getTime()===y.getTime();}
+  if(key==='week'){const w=new Date(today);w.setDate(w.getDate()-today.getDay());return d>=w&&d<=now;}
+  if(key==='month'){const m=new Date(now.getFullYear(),now.getMonth(),1);return d>=m&&d<=now;}
+  return true;
+}
+function dateFilterHtml(varName,id,renderFn,cur){
+  return `<select class="fsel" id="${id}" onchange="${varName}=this.value;${renderFn}()">
+    <option value="">All Time</option>
+    <option value="today" ${cur==='today'?'selected':''}>Today</option>
+    <option value="yesterday" ${cur==='yesterday'?'selected':''}>Yesterday</option>
+    <option value="week" ${cur==='week'?'selected':''}>This Week</option>
+    <option value="month" ${cur==='month'?'selected':''}>This Month</option>
+  </select>`;
+}
+// ── Sort (Newest / Oldest / Name A-Z / Name Z-A) ──
+function sortRows(rows,key,nameField,dateField){
+  const arr=[...rows];
+  if(key==='name_asc')arr.sort((a,b)=>String(a[nameField]||'').localeCompare(String(b[nameField]||''),undefined,{sensitivity:'base'}));
+  else if(key==='name_desc')arr.sort((a,b)=>String(b[nameField]||'').localeCompare(String(a[nameField]||''),undefined,{sensitivity:'base'}));
+  else if(key==='date_asc')arr.sort((a,b)=>new Date(a[dateField]||0)-new Date(b[dateField]||0));
+  else arr.sort((a,b)=>new Date(b[dateField]||0)-new Date(a[dateField]||0)); // date_desc (default)
+  return arr;
+}
+function sortHtml(varName,id,renderFn,cur){
+  return `<select class="fsel" id="${id}" onchange="${varName}=this.value;${renderFn}()">
+    <option value="date_desc" ${(!cur||cur==='date_desc')?'selected':''}>Newest First</option>
+    <option value="date_asc" ${cur==='date_asc'?'selected':''}>Oldest First</option>
+    <option value="name_asc" ${cur==='name_asc'?'selected':''}>Name A → Z</option>
+    <option value="name_desc" ${cur==='name_desc'?'selected':''}>Name Z → A</option>
+  </select>`;
+}
+
+// ════════════════════════════════════
 //  ROUTE — PUBLIC FORMS
 // ════════════════════════════════════
 window.addEventListener('DOMContentLoaded',()=>{
@@ -807,8 +860,6 @@ async function doLogin(){
       _sessionDead=false;
       SES={token:res.token,user:res.user};
       sessionStorage.setItem('lhr_ses',JSON.stringify(SES));
-      // Save for silent re-login when token expires
-      sessionStorage.setItem('lhr_creds',JSON.stringify({u,p}));
       bootApp();
       return;
     }
@@ -918,6 +969,7 @@ const PFNS={dash:rDash,enq:rEnq,clients:rClients,myreq:rMyReq,newreq:rNewReq,all
 
 function go(p){
   if(!SES)return;
+  CUR_PAGE=p;
   document.querySelectorAll('.ni').forEach(e=>e.classList.toggle('active',e.dataset.p===p));
   document.getElementById('tbTitle').textContent=PTITLES[p]||p;
   document.getElementById('pa').innerHTML='<div class="loading"><div class="sp"></div><p>Loading…</p></div>';
@@ -987,26 +1039,30 @@ function rDash(){
 // ════════════════════════════════════
 //  ENQUIRIES
 // ════════════════════════════════════
-let eP=1,eSr='',eSt='';
+let eP=1,eSr='',eSt='',eDF='',eSO='date_desc';
 async function rEnq(){
-  eP=1;eSr='';eSt='';
-  dEnq();
+  eP=1;eSr='';eSt='';eDF='';eSO='date_desc';
   if(GAS_OK){
     try{
       const res=await gasCall('getEnquiries',{});
+      if(!stillOn('enq'))return; // user already navigated away — discard this response
       if(res.success){
         ENQUIRIES=mapEnquiries(res.data);
-        dEnq();
       } else if(res.error&&!res.error.includes('Session')) {
         console.error('getEnquiries:',res.error);
+        toast('Enquiries load error: '+res.error,'e');
       }
     }catch(e){console.error('Error:',e.message);}
   }
+  if(!stillOn('enq'))return;
+  dEnq();
 }
 function dEnq(){
-  let rows=[...ENQUIRIES].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+  let rows=[...ENQUIRIES];
   if(eSr)rows=rows.filter(r=>(r.id+r.company+r.mobile+r.email+r.contact).toLowerCase().includes(eSr.toLowerCase()));
   if(eSt)rows=rows.filter(r=>r.status===eSt);
+  if(eDF)rows=rows.filter(r=>inDateRange(r.createdAt,eDF));
+  rows=sortRows(rows,eSO,'company','createdAt');
   const {rows:pg,total,pages}=pg_fn(rows,eP);
   const expD=rows.map(r=>({'Enquiry ID':r.id,'Company':r.company,'Contact':r.contact,'Mobile':r.mobile,'Email':r.email,'Service':r.option,'Requirement':r.requirement,'Status':r.status,'Date':fd(r.createdAt),'Source':r.source||'Internal'}));
   let h=`<div class="ph"><div><h2>Enquiries</h2><p class="ph-sub">${total} total enquiries</p></div>
@@ -1016,10 +1072,12 @@ function dEnq(){
   </div></div>
   <div class="card">
   <div class="tbar">
-    <div class="srch"><input placeholder="Search ID, company, mobile, email…" oninput="eSr=this.value;eP=1;dEnq()" value="${esc(eSr)}"></div>
+    <div class="srch"><input id="eSrI" placeholder="Search ID, company, mobile, email…" oninput="eSr=this.value;eP=1;dEnq()" value="${esc(eSr)}"></div>
     <select class="fsel" onchange="eSt=this.value;eP=1;dEnq()">
-      <option value="">All Status</option><option>New Client</option><option>Old Client</option><option>Lost Client</option>
+      <option value="">All Status</option><option ${eSt==='New Client'?'selected':''}>New Client</option><option ${eSt==='Old Client'?'selected':''}>Old Client</option><option ${eSt==='Lost Client'?'selected':''}>Lost Client</option>
     </select>
+    ${dateFilterHtml('eDF','eDFSel','dEnq',eDF)}
+    ${sortHtml('eSO','eSOSel','dEnq',eSO)}
   </div>
   <div class="tw"><table><tr><th>Enquiry ID</th><th>Company</th><th>Contact</th><th>Mobile</th><th>Email</th><th>Service</th><th>Status</th><th>Date</th><th>Actions</th></tr>`;
   if(!pg.length)h+=`<tr><td colspan="9"><div class="empty"><div class="empty-ic">&#8709;</div><p style="color:var(--t3);font-size:14px">No enquiries found</p></div></td></tr>`;
@@ -1035,7 +1093,7 @@ function dEnq(){
     </div></td></tr>`;
   });
   h+=`</table></div>${pager(total,pages,eP,'epg')}</div>`;
-  document.getElementById('pa').innerHTML=h;
+  paintPA(h);
 }
 function epg(p){eP=p;dEnq()}
 function pg_fn(arr,page){const {rows,total,pages}=pg_r(arr,page,PG);return{rows,total,pages}}
@@ -1167,26 +1225,30 @@ async function doConv(enqId){
 // ════════════════════════════════════
 //  CLIENTS
 // ════════════════════════════════════
-let cP=1,cSr='',cSt='';
+let cP=1,cSr='',cSt='',cDF='',cSO='date_desc';
 async function rClients(){
-  cP=1;cSr='';cSt='';
-  dClients();
+  cP=1;cSr='';cSt='';cDF='';cSO='date_desc';
   if(GAS_OK){
     try{
       const res=await gasCall('getClients',{});
+      if(!stillOn('clients'))return;
       if(res.success){
         CLIENTS=mapClients(res.data);
-        dClients();
       } else if(res.error&&!res.error.includes('Session')) {
         console.error('getClients:',res.error);
+        toast('Clients load error: '+res.error,'e');
       }
     }catch(e){console.error('Error:',e.message);}
   }
+  if(!stillOn('clients'))return;
+  dClients();
 }
 function dClients(){
-  let rows=[...CLIENTS].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+  let rows=[...CLIENTS];
   if(cSr)rows=rows.filter(r=>(r.id+r.company+r.mobile+r.email+r.gst+r.pan).toLowerCase().includes(cSr.toLowerCase()));
   if(cSt)rows=rows.filter(r=>r.status===cSt);
+  if(cDF)rows=rows.filter(r=>inDateRange(r.createdAt,cDF));
+  rows=sortRows(rows,cSO,'company','createdAt');
   const {rows:pg,total,pages}=pg_r(rows,cP,PG);
   const expD=rows.map(r=>({'Client ID':r.id,'Company':r.company,'Contact':r.contact,'Mobile':r.mobile,'Email':r.email,'GST':r.gst||'','PAN':r.pan||'','Services':(r.services||[]).join('; '),'Status':r.status,'Date':fd(r.createdAt),'Enquiry ID':r.enquiryId||''}));
   let h=`<div class="ph"><div><h2>Client Master</h2><p class="ph-sub">${total} clients | Customer Database</p></div>
@@ -1196,10 +1258,12 @@ function dClients(){
   </div></div>
   <div class="card">
   <div class="tbar">
-    <div class="srch"><input placeholder="Search ID, company, mobile, email, GST, PAN…" oninput="cSr=this.value;cP=1;dClients()" value="${esc(cSr)}"></div>
+    <div class="srch"><input id="cSrI" placeholder="Search ID, company, mobile, email, GST, PAN…" oninput="cSr=this.value;cP=1;dClients()" value="${esc(cSr)}"></div>
     <select class="fsel" onchange="cSt=this.value;cP=1;dClients()">
-      <option value="">All Status</option><option>Client Registered</option><option>Active</option><option>Inactive</option>
+      <option value="">All Status</option><option ${cSt==='Client Registered'?'selected':''}>Client Registered</option><option ${cSt==='Active'?'selected':''}>Active</option><option ${cSt==='Inactive'?'selected':''}>Inactive</option>
     </select>
+    ${dateFilterHtml('cDF','cDFSel','dClients',cDF)}
+    ${sortHtml('cSO','cSOSel','dClients',cSO)}
   </div>
   <div class="tw"><table><tr><th>Client ID</th><th>Company</th><th>Contact</th><th>Mobile</th><th>GSTIN</th><th>GST Type</th><th>Status</th><th>Enq ID</th><th>Actions</th></tr>`;
   if(!pg.length)h+=`<tr><td colspan="10"><div class="empty"><div class="empty-ic">🏢</div><p>No clients found</p></div></td></tr>`;
@@ -1219,7 +1283,7 @@ function dClients(){
       <button class="ib rd" onclick="delCli('${r.id}')">🗑️</button>
     </div></td></tr>`);
   h+=`</table></div>${pager(total,pages,cP,'cpg')}</div>`;
-  document.getElementById('pa').innerHTML=h;
+  paintPA(h);
 }
 function cpg(p){cP=p;dClients()}
 
@@ -1469,21 +1533,25 @@ async function submitReq(){
   sReq();toast(`Request ${id} submitted!`,'s');go('myreq');
 }
 
-let mP=1,mSr='',mSt2='';
+let mP=1,mSr='',mSt2='',mDF='',mSO='date_desc';
 async function rMyReq(){
-  mP=1;mSr='';mSt2='';
-  dMyReq();
+  mP=1;mSr='';mSt2='';mDF='';mSO='date_desc';
   if(GAS_OK){
     try{
       const res=await gasCall('getRequests',{});
-      if(res.success){REQUESTS=mapRequests(res.data||[]);dMyReq();}
+      if(!stillOn('myreq'))return;
+      if(res.success){REQUESTS=mapRequests(res.data||[]);}
     }catch(e){console.warn('GAS load error:',e);}
   }
+  if(!stillOn('myreq'))return;
+  dMyReq();
 }
 function dMyReq(){
-  let rows=[...REQUESTS].filter(r=>SES.user.role!=='employee'||r.byId===SES.user.id).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+  let rows=[...REQUESTS].filter(r=>SES.user.role!=='employee'||r.byId===SES.user.id);
   if(mSr)rows=rows.filter(r=>(r.id+r.clientName+r.purpose+r.piNumber).toLowerCase().includes(mSr.toLowerCase()));
   if(mSt2)rows=rows.filter(r=>r.status===mSt2);
+  if(mDF)rows=rows.filter(r=>inDateRange(r.createdAt,mDF));
+  rows=sortRows(rows,mSO,'clientName','createdAt');
   const {rows:pg,total,pages}=pg_r(rows,mP,PG);
   let h=`<div class="ph"><div><h2>My Bill Requests</h2><p class="ph-sub">${total} requests</p></div>
   <div class="ph-act">
@@ -1491,8 +1559,10 @@ function dMyReq(){
     <button class="btn badd" onclick="go('newreq')">+ New Request</button>
   </div></div>
   <div class="card"><div class="tbar">
-    <div class="srch"><input placeholder="Search ID, client, purpose, PI…" oninput="mSr=this.value;mP=1;dMyReq()" value="${esc(mSr)}"></div>
-    <select class="fsel" onchange="mSt2=this.value;mP=1;dMyReq()"><option value="">All Status</option><option>Pending for PI</option><option>PI Created</option><option>Completed</option></select>
+    <div class="srch"><input id="mSrI" placeholder="Search ID, client, purpose, PI…" oninput="mSr=this.value;mP=1;dMyReq()" value="${esc(mSr)}"></div>
+    <select class="fsel" onchange="mSt2=this.value;mP=1;dMyReq()"><option value="">All Status</option><option ${mSt2==='Pending for PI'?'selected':''}>Pending for PI</option><option ${mSt2==='PI Created'?'selected':''}>PI Created</option><option ${mSt2==='Completed'?'selected':''}>Completed</option></select>
+    ${dateFilterHtml('mDF','mDFSel','dMyReq',mDF)}
+    ${sortHtml('mSO','mSOSel','dMyReq',mSO)}
   </div>
   <div class="tw"><table><tr><th>Request ID</th><th>Client</th><th>Amount</th><th>Date</th><th>Created</th><th>PI No</th><th>Status</th><th>Progress</th><th>Actions</th></tr>`;
   if(!pg.length)h+=`<tr><td colspan="9"><div class="empty"><div class="empty-ic">&#8709;</div><p style="color:var(--t3);font-size:14px">No requests found</p></div></td></tr>`;
@@ -1508,37 +1578,43 @@ function dMyReq(){
     ${r.invoiceFile?`<button class="ib gr" onclick="dlFile('${r.id}','inv')">Download Inv</button>`:''}
     </div></td></tr>`;});
   h+=`</table></div>${pager(total,pages,mP,'mpg')}</div>`;
-  document.getElementById('pa').innerHTML=h;
+  paintPA(h);
 }
 function mpg(p){mP=p;dMyReq()}
 function rows2xls(rows){return rows.map(r=>({'Request ID':r.id,'Client':r.clientName,'Email':r.clientMail,'Amount':r.amount,'Date':r.requestDate,'By':r.byName,'Dept':r.dept,'Status':r.status,'PI No':r.piNumber||'','Tally Invoice':r.tallyInv||''}))}
 function dlFile(id,type){const r=REQUESTS.find(x=>x.id===id);if(!r)return;const f=type==='pi'?r.piFile:r.invoiceFile;if(!f){toast('File not available','w');return}const a=document.createElement('a');a.href=f;a.download=(type==='pi'?'PI_':'Invoice_')+id;a.click()}
 
 // ALL REQUESTS
-let aP=1,aSr='',aSt='',aDept='';
+let aP=1,aSr='',aSt='',aDept='',aDF='',aSO='date_desc';
 async function rAllReq(){
-  aP=1;aSr='';aSt='';aDept='';
-  dAllReq();
+  aP=1;aSr='';aSt='';aDept='';aDF='';aSO='date_desc';
   if(GAS_OK){
     try{
       const res=await gasCall('getRequests',{});
-      if(res.success){REQUESTS=mapRequests(res.data||[]);dAllReq();}
+      if(!stillOn('allreq'))return;
+      if(res.success){REQUESTS=mapRequests(res.data||[]);}
     }catch(e){console.warn('GAS load error:',e);}
   }
+  if(!stillOn('allreq'))return;
+  dAllReq();
 }
 function dAllReq(){
-  let rows=[...REQUESTS].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+  let rows=[...REQUESTS];
   if(aSr)rows=rows.filter(r=>(r.id+r.clientName+r.byName+r.piNumber+r.tallyInv).toLowerCase().includes(aSr.toLowerCase()));
   if(aSt)rows=rows.filter(r=>r.status===aSt);
   if(aDept)rows=rows.filter(r=>r.dept===aDept);
+  if(aDF)rows=rows.filter(r=>inDateRange(r.createdAt,aDF));
+  rows=sortRows(rows,aSO,'clientName','createdAt');
   const depts=[...new Set(REQUESTS.map(r=>r.dept))].filter(Boolean);
   const {rows:pg,total,pages}=pg_r(rows,aP,PG);
   let h=`<div class="ph"><div><h2>All Requests</h2><p class="ph-sub">${total} total</p></div>
   <button class="btn bexp" onclick="xls(rows2xls(rows),'all_requests')">Export Excel</button></div>
   <div class="card"><div class="tbar">
-    <div class="srch"><input placeholder="Request ID, client, PI, invoice…" oninput="aSr=this.value;aP=1;dAllReq()" value="${esc(aSr)}"></div>
-    <select class="fsel" onchange="aSt=this.value;aP=1;dAllReq()"><option value="">All Status</option><option>Pending for PI</option><option>PI Created</option><option>Completed</option></select>
-    <select class="fsel" onchange="aDept=this.value;aP=1;dAllReq()"><option value="">All Depts</option>${depts.map(d=>`<option>${esc(d)}</option>`).join('')}</select>
+    <div class="srch"><input id="aSrI" placeholder="Request ID, client, PI, invoice…" oninput="aSr=this.value;aP=1;dAllReq()" value="${esc(aSr)}"></div>
+    <select class="fsel" onchange="aSt=this.value;aP=1;dAllReq()"><option value="">All Status</option><option ${aSt==='Pending for PI'?'selected':''}>Pending for PI</option><option ${aSt==='PI Created'?'selected':''}>PI Created</option><option ${aSt==='Completed'?'selected':''}>Completed</option></select>
+    <select class="fsel" onchange="aDept=this.value;aP=1;dAllReq()"><option value="">All Depts</option>${depts.map(d=>`<option ${aDept===d?'selected':''}>${esc(d)}</option>`).join('')}</select>
+    ${dateFilterHtml('aDF','aDFSel','dAllReq',aDF)}
+    ${sortHtml('aSO','aSOSel','dAllReq',aSO)}
   </div>
   <div class="tw"><table><tr><th>Request ID</th><th>Client</th><th>Amount</th><th>Employee</th><th>Requested By</th><th>Dept</th><th>PI No</th><th>Status</th><th>Date</th><th>Actions</th></tr>`;
   if(!pg.length)h+=`<tr><td colspan="10"><div class="empty"><div class="empty-ic">&#8709;</div><p style="color:var(--t3);font-size:14px">No requests found</p></div></td></tr>`;
@@ -1551,7 +1627,7 @@ function dAllReq(){
   ${r.status==='Final PI'?`<button class="ib gr" onclick="go('inv')">Upload Invoice</button>`:r.status==='PI Created'?'<span style="font-size:11px;color:var(--amber);font-style:italic">Finalise PI First</span>':''}
   </div></td></tr>`);
   h+=`</table></div>${pager(total,pages,aP,'apg')}</div>`;
-  document.getElementById('pa').innerHTML=h;
+  paintPA(h);
 }
 function apg(p){aP=p;dAllReq()}
 
@@ -1600,24 +1676,30 @@ function viewReq(id){
 }
 
 // PI MANAGEMENT
-let piP=1,piSr='';
+let piP=1,piSr='',piDF='',piSO='date_desc';
 async function rPI(){
-  piP=1;piSr='';
-  dPI();
+  piP=1;piSr='';piDF='';piSO='date_desc';
   if(GAS_OK){
     try{
       const res=await gasCall('getRequests',{});
-      if(res.success){REQUESTS=mapRequests(res.data||[]);dPI();}
+      if(!stillOn('pi'))return;
+      if(res.success){REQUESTS=mapRequests(res.data||[]);}
     }catch(e){console.warn('GAS load error:',e);}
   }
+  if(!stillOn('pi'))return;
+  dPI();
 }
 function dPI(){
-  let rows=REQUESTS.filter(r=>r.status==='Pending for PI'||r.status==='PI Created'||r.status==='Final PI').sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+  let rows=REQUESTS.filter(r=>r.status==='Pending for PI'||r.status==='PI Created'||r.status==='Final PI');
   if(piSr)rows=rows.filter(r=>(r.id+r.clientName+r.byName).toLowerCase().includes(piSr.toLowerCase()));
+  if(piDF)rows=rows.filter(r=>inDateRange(r.createdAt,piDF));
+  rows=sortRows(rows,piSO,'clientName','createdAt');
   const {rows:pg,total,pages}=pg_r(rows,piP,PG);
   let h=`<div class="ph"><h2>PI Management</h2><p class="ph-sub">${total} pending PI creation</p></div>
   <div class="card"><div class="tbar">
-    <div class="srch"><input placeholder="Search…" oninput="piSr=this.value;piP=1;dPI()" value="${esc(piSr)}"></div>
+    <div class="srch"><input id="piSrI" placeholder="Search…" oninput="piSr=this.value;piP=1;dPI()" value="${esc(piSr)}"></div>
+    ${dateFilterHtml('piDF','piDFSel','dPI',piDF)}
+    ${sortHtml('piSO','piSOSel','dPI',piSO)}
     <span style="font-size:13px;color:var(--orange);font-weight:700">&#9776; ${rows.filter(r=>!r.piNumber).length} pending | 📄 ${rows.filter(r=>r.piNumber&&!r.isFinalPI).length} draft | ✅ ${rows.filter(r=>r.isFinalPI).length} final</span>
   </div>
   <div class="tw"><table><tr><th>Request ID</th><th>Client</th><th>Email</th><th>Amount</th><th>PI No</th><th>PI Status</th><th>By</th><th>Date</th><th>Action</th></tr>`;
@@ -1633,7 +1715,7 @@ function dPI(){
     ${r.piNumber?`<button class="ib tl" onclick="downloadPIPDF('${r.id}',false)">Download PI</button>`:''}
   </div></td></tr>`;});
   h+=`</table></div>${pager(total,pages,piP,'pipg')}</div>`;
-  document.getElementById('pa').innerHTML=h;
+  paintPA(h);
 }
 function pipg(p){piP=p;dPI()}
 function piForm(reqId){
@@ -1795,24 +1877,30 @@ async function savePI(reqId){
 }
 
 // INVOICE
-let ivP=1,ivSr='';
+let ivP=1,ivSr='',ivDF='',ivSO='date_desc';
 async function rInv(){
-  ivP=1;ivSr='';
-  dInv();
+  ivP=1;ivSr='';ivDF='';ivSO='date_desc';
   if(GAS_OK){
     try{
       const res=await gasCall('getRequests',{});
-      if(res.success){REQUESTS=mapRequests(res.data||[]);dInv();}
+      if(!stillOn('inv'))return;
+      if(res.success){REQUESTS=mapRequests(res.data||[]);}
     }catch(e){console.warn('GAS load error:',e);}
   }
+  if(!stillOn('inv'))return;
+  dInv();
 }
 function dInv(){
-  let rows=REQUESTS.filter(r=>r.status==='Final PI').sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+  let rows=REQUESTS.filter(r=>r.status==='Final PI');
   if(ivSr)rows=rows.filter(r=>(r.id+r.clientName+r.piNumber).toLowerCase().includes(ivSr.toLowerCase()));
+  if(ivDF)rows=rows.filter(r=>inDateRange(r.createdAt,ivDF));
+  rows=sortRows(rows,ivSO,'clientName','createdAt');
   const {rows:pg,total,pages}=pg_r(rows,ivP,PG);
   let h=`<div class="ph"><h2>Invoice Upload</h2><p class="ph-sub">${total} with Final PI — ready for invoice</p></div>
   <div class="card"><div class="tbar">
-    <div class="srch"><input placeholder="Search…" oninput="ivSr=this.value;ivP=1;dInv()" value="${esc(ivSr)}"></div>
+    <div class="srch"><input id="ivSrI" placeholder="Search…" oninput="ivSr=this.value;ivP=1;dInv()" value="${esc(ivSr)}"></div>
+    ${dateFilterHtml('ivDF','ivDFSel','dInv',ivDF)}
+    ${sortHtml('ivSO','ivSOSel','dInv',ivSO)}
     <span style="font-size:13px;color:var(--accent);font-weight:700">&#128196; ${total} with PI</span>
   </div>
   <div class="tw"><table><tr><th>Request ID</th><th>Client</th><th>Req Amount</th><th>PI Number</th><th>PI Date</th><th>By</th><th>Action</th></tr>`;
@@ -1825,7 +1913,7 @@ function dInv(){
     ${r.piNumber?`<button class="ib tl" onclick="downloadPIPDF('${r.id}',false)">Download PI</button>`:''}
   </div></td></tr>`);
   h+=`</table></div>${pager(total,pages,ivP,'ivpg')}</div>`;
-  document.getElementById('pa').innerHTML=h;
+  paintPA(h);
 }
 function ivpg(p){ivP=p;dInv()}
 function invForm(reqId){
@@ -1871,13 +1959,24 @@ async function saveInv(reqId){
 // ════════════════════════════════════
 //  PAYMENTS PAGE
 // ════════════════════════════════════
+let pmSr='',pmDF='',pmSO='date_desc';
 async function rPayments(){
+  pmSr='';pmDF='';pmSO='date_desc';
+  if(GAS_OK){
+    try{
+      const res=await gasCall('getRequests',{});
+      if(!stillOn('payments'))return;
+      if(res.success){REQUESTS=mapRequests(res.data||[]);}
+    }catch(e){}
+  }
+  if(!stillOn('payments'))return;
   dPayments();
-  if(GAS_OK){try{const res=await gasCall('getRequests',{});if(res.success){REQUESTS=mapRequests(res.data||[]);dPayments();}}catch(e){}}
 }
 function dPayments(){
-  const rows=REQUESTS.filter(r=>r.status==='Completed'||r.status==='Payment Received'||r.paymentStatus)
-    .sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+  let rows=REQUESTS.filter(r=>r.status==='Completed'||r.status==='Payment Received'||r.paymentStatus);
+  if(pmSr)rows=rows.filter(r=>(r.id+r.clientName+(r.tallyInv||'')+(r.paymentRef||'')).toLowerCase().includes(pmSr.toLowerCase()));
+  if(pmDF)rows=rows.filter(r=>inDateRange(r.createdAt,pmDF));
+  rows=sortRows(rows,pmSO,'clientName','createdAt');
   const paid=rows.filter(r=>r.paymentStatus==='Paid');
   const pending=rows.filter(r=>r.status==='Completed'&&!r.paymentStatus);
   const totalInv=rows.reduce((a,r)=>a+(+r.invoiceAmt||0),0);
@@ -1890,7 +1989,13 @@ function dPayments(){
     <div class="sc c3"><div class="sc-ic">&#x20B9;</div><div class="sc-l">Total Invoiced</div><div class="sc-v" style="font-size:16px">${fmt(totalInv)}</div></div>
     <div class="sc c5"><div class="sc-ic">&#x2714;</div><div class="sc-l">Total Received</div><div class="sc-v" style="font-size:16px">${fmt(totalPaid)}</div></div>
   </div>
-  <div class="card"><div class="tw"><table>
+  <div class="card">
+  <div class="tbar">
+    <div class="srch"><input id="pmSrI" placeholder="Search ID, client, invoice, ref…" oninput="pmSr=this.value;dPayments()" value="${esc(pmSr)}"></div>
+    ${dateFilterHtml('pmDF','pmDFSel','dPayments',pmDF)}
+    ${sortHtml('pmSO','pmSOSel','dPayments',pmSO)}
+  </div>
+  <div class="tw"><table>
     <tr><th>Request ID</th><th>Client</th><th>Invoice No</th><th>Invoice Amt</th><th>Payment Status</th><th>Paid Amt</th><th>Date</th><th>UTR/Ref</th><th>Actions</th></tr>`;
   if(!rows.length)h+=`<tr><td colspan="9"><div class="empty"><div class="empty-ic">&#9699;</div><p>No completed bills yet</p></div></td></tr>`;
   rows.forEach(r=>{
@@ -1910,7 +2015,7 @@ function dPayments(){
       </div></td></tr>`;
   });
   h+=`</table></div></div>`;
-  document.getElementById('pa').innerHTML=h;
+  paintPA(h);
 }
 
 // ════════════════════════════════════
@@ -2041,25 +2146,42 @@ async function loadUsers(){
   if(res.success){
     USERS=res.data.map(u=>({id:u.UserID,username:u.Username,name:u.Name,role:u.Role,
       dept:(u.Dept||'').split(',').map(s=>s.trim()).filter(Boolean),email:u.Email,
-      empId:u.EmpID||'',designation:u.Designation||'',mobile:u.Mobile||'',doj:u.DOJ||''}));
+      empId:u.EmpID||'',designation:u.Designation||'',mobile:u.Mobile||'',doj:u.DOJ||'',
+      createdAt:u.CreatedAt||''}));
   } else {
     toast('Failed to load users: '+(res.error||''),'e');
   }
   return USERS;
 }
+let uSr='',uDF='',uSO='name_asc';
 async function rUsers(){
-  document.getElementById('pa').innerHTML='<div class="loading"><div class="sp"></div><p>Loading…</p></div>';
+  uSr='';uDF='';uSO='name_asc';
   await loadUsers();
+  if(!stillOn('users'))return;
+  dUsers();
+}
+function dUsers(){
+  let rows=[...USERS];
+  if(uSr)rows=rows.filter(u=>(u.username+u.name+(u.email||'')+(u.mobile||'')).toLowerCase().includes(uSr.toLowerCase()));
+  if(uDF)rows=rows.filter(u=>inDateRange(u.createdAt,uDF));
+  rows=sortRows(rows,uSO,'name','createdAt');
   let h=`<div class="ph"><h2>User Management</h2>
   <div class="ph-act"><button class="btn bexp" onclick="xls(USERS.map(u=>({ID:u.id,Username:u.username,Name:u.name,Role:u.role,Dept:Array.isArray(u.dept)?u.dept.join(', '):u.dept,Email:u.email})),'users')">Export Excel</button>
   <button class="btn badd" onclick="uForm()">+ Add User</button></div></div>
-  <div class="card"><div class="tw"><table><tr><th>Username</th><th>Name</th><th>Role</th><th>Department</th><th>Email</th><th>Actions</th></tr>`;
-  USERS.forEach(u=>h+=`<tr><td><strong>${esc(u.username)}</strong></td><td>${esc(u.name)}</td><td>${rBadge(u.role)}</td>
+  <div class="card">
+  <div class="tbar">
+    <div class="srch"><input id="uSrI" placeholder="Search username, name, email, mobile…" oninput="uSr=this.value;dUsers()" value="${esc(uSr)}"></div>
+    ${dateFilterHtml('uDF','uDFSel','dUsers',uDF)}
+    ${sortHtml('uSO','uSOSel','dUsers',uSO)}
+  </div>
+  <div class="tw"><table><tr><th>Username</th><th>Name</th><th>Role</th><th>Department</th><th>Email</th><th>Actions</th></tr>`;
+  if(!rows.length)h+=`<tr><td colspan="6" class="empty">No users found</td></tr>`;
+  rows.forEach(u=>h+=`<tr><td><strong>${esc(u.username)}</strong></td><td>${esc(u.name)}</td><td>${rBadge(u.role)}</td>
   <td>${(Array.isArray(u.dept)?u.dept:(u.dept?[u.dept]:[])).map(d=>`<span class="chip">${esc(d)}</span>`).join(' ')||'—'}</td><td style="font-size:12px">${esc(u.email||'—')}</td>
   <td><div class="act"><button class="ib" onclick="uForm('${u.id}')">✏️ Edit</button>
   ${u.id!==SES.user.id?`<button class="ib rd" onclick="delU('${u.id}')">Delete</button>`:''}</div></td></tr>`);
   h+=`</table></div></div>`;
-  document.getElementById('pa').innerHTML=h;
+  paintPA(h);
 }
 function uForm(id=''){
   const u=id?USERS.find(x=>x.id===id):{};const isE=!!u.id;
@@ -2094,13 +2216,13 @@ async function saveU(id){
     const res=await gasCall('saveUser',{id,username:un,name:nm,role:rl,dept:dp.join(','),email:em,password:pw,...extra});
     hideLoading();
     if(!res.success){toast(res.error||'Failed to save user','e');return}
-    closeM();toast('Saved','s');rUsers();
+    closeM();toast('Saved','s');refreshUserPage();
     return;
   }
   // Offline fallback only
   if(id){const idx=USERS.findIndex(x=>x.id===id);USERS[idx]={...USERS[idx],name:nm,role:rl,dept:dp,email:em,...extra};if(pw)USERS[idx].password=pw;}
   else{if(USERS.find(x=>x.username===un)){toast('Username exists','e');return}USERS.push({id:'USR-'+Date.now(),username:un,name:nm,role:rl,dept:dp,email:em,password:pw,...extra});}
-  sUsers();closeM();toast('Saved','s');rUsers();
+  sUsers();closeM();toast('Saved','s');refreshUserPage();
 }
 async function delU(id){
   if(!confirm('Delete user?'))return;
@@ -2109,19 +2231,32 @@ async function delU(id){
     const res=await gasCall('deleteUser',{id});
     hideLoading();
     if(!res.success){toast(res.error||'Failed to delete user','e');return}
-    toast('Deleted','s');rUsers();
+    toast('Deleted','s');refreshUserPage();
     return;
   }
-  USERS=USERS.filter(x=>x.id!==id);sUsers();toast('Deleted','s');rUsers()
+  USERS=USERS.filter(x=>x.id!==id);sUsers();toast('Deleted','s');refreshUserPage()
 }
+
+// Users and Employee Master both edit the same USERS list — refresh
+// whichever of the two screens is actually on-screen right now.
+function refreshUserPage(){if(CUR_PAGE==='employees')rEmployees();else rUsers();}
 
 // ════════════════════════════════════
 //  EMPLOYEE MASTER
 // ════════════════════════════════════
+let mpSr='',mpDF='',mpSO='name_asc';
 async function rEmployees(){
-  document.getElementById('pa').innerHTML='<div class="loading"><div class="sp"></div><p>Loading…</p></div>';
+  mpSr='';mpDF='';mpSO='name_asc';
   await loadUsers();
-  const expData=USERS.map(u=>({
+  if(!stillOn('employees'))return;
+  dEmployees();
+}
+function dEmployees(){
+  let rows=[...USERS];
+  if(mpSr)rows=rows.filter(u=>((u.empId||'')+u.name+u.username+(u.designation||'')+(u.email||'')+(u.mobile||'')).toLowerCase().includes(mpSr.toLowerCase()));
+  if(mpDF)rows=rows.filter(u=>inDateRange(u.doj||u.createdAt,mpDF));
+  rows=sortRows(rows,mpSO,'name','createdAt');
+  const expData=rows.map(u=>({
     'Emp ID':u.empId||'','Name':u.name,'Username':u.username,
     'Designation':u.designation||'','Department':Array.isArray(u.dept)?u.dept.join(', '):(u.dept||''),
     'Email':u.email||'','Mobile':u.mobile||'',
@@ -2137,10 +2272,16 @@ async function rEmployees(){
     ${DEPTS.map(d=>{const n=USERS.filter(u=>Array.isArray(u.dept)?u.dept.includes(d):u.dept===d).length;return`<div class="sc c1"><div class="sc-ic">&#9678;</div><div class="sc-l">${esc(d)}</div><div class="sc-v">${n}</div></div>`}).join('')}
   </div>
 
-  <div class="card"><div class="tw"><table>
+  <div class="card">
+  <div class="tbar">
+    <div class="srch"><input id="mpSrI" placeholder="Search emp ID, name, designation, email…" oninput="mpSr=this.value;dEmployees()" value="${esc(mpSr)}"></div>
+    ${dateFilterHtml('mpDF','mpDFSel','dEmployees',mpDF)}
+    ${sortHtml('mpSO','mpSOSel','dEmployees',mpSO)}
+  </div>
+  <div class="tw"><table>
     <tr><th>Emp ID</th><th>Name</th><th>Designation</th><th>Department</th><th>Email</th><th>Mobile</th><th>DOJ</th><th>Role</th><th>Actions</th></tr>`;
-  if(!USERS.length)h+=`<tr><td colspan="9" class="empty">No employees</td></tr>`;
-  USERS.forEach(u=>h+=`<tr>
+  if(!rows.length)h+=`<tr><td colspan="9" class="empty">No employees found</td></tr>`;
+  rows.forEach(u=>h+=`<tr>
     <td><span class="chip">${esc(u.empId||'—')}</span></td>
     <td><strong>${esc(u.name)}</strong></td>
     <td>${esc(u.designation||'—')}</td>
@@ -2154,27 +2295,44 @@ async function rEmployees(){
       ${u.id!==SES.user.id?`<button class="ib rd" onclick="delU('${u.id}')">Delete</button>`:''}
     </div></td></tr>`);
   h+=`</table></div></div>`;
-  document.getElementById('pa').innerHTML=h;
+  paintPA(h);
 }
 
 // COMPANIES
+let coSr='',coDF='',coSO='name_asc';
 async function rCos(){
-  document.getElementById('pa').innerHTML='<div class="loading"><div class="sp"></div><p>Loading…</p></div>';
+  coSr='';coDF='';coSO='name_asc';
   if(GAS_OK){
     const res=await gasCall('getCompanies',{});
+    if(!stillOn('cos'))return;
     if(res.success){
-      COMPANIES=res.data.map(c=>({id:c.CoID,name:c.Name,gstin:c.GSTIN,address:c.Address}));
+      COMPANIES=res.data.map(c=>({id:c.CoID,name:c.Name,gstin:c.GSTIN,address:c.Address,createdAt:c.CreatedAt||''}));
     } else {
       toast('Failed to load companies: '+(res.error||''),'e');
     }
   }
+  if(!stillOn('cos'))return;
+  dCos();
+}
+function dCos(){
+  let rows=[...COMPANIES];
+  if(coSr)rows=rows.filter(c=>(c.name+(c.gstin||'')+(c.address||'')).toLowerCase().includes(coSr.toLowerCase()));
+  if(coDF)rows=rows.filter(c=>inDateRange(c.createdAt,coDF));
+  rows=sortRows(rows,coSO,'name','createdAt');
   let h=`<div class="ph"><h2>Companies</h2><button class="btn badd" onclick="coForm()">+ Add</button></div>
-  <div class="card"><div class="tw"><table><tr><th>ID</th><th>Company Name</th><th>GSTIN</th><th>Address</th><th>Actions</th></tr>`;
-  COMPANIES.forEach(c=>h+=`<tr><td><span class="chip">${esc(c.id)}</span></td><td><strong>${esc(c.name)}</strong></td>
+  <div class="card">
+  <div class="tbar">
+    <div class="srch"><input id="coSrI" placeholder="Search company, GSTIN, address…" oninput="coSr=this.value;dCos()" value="${esc(coSr)}"></div>
+    ${dateFilterHtml('coDF','coDFSel','dCos',coDF)}
+    ${sortHtml('coSO','coSOSel','dCos',coSO)}
+  </div>
+  <div class="tw"><table><tr><th>ID</th><th>Company Name</th><th>GSTIN</th><th>Address</th><th>Actions</th></tr>`;
+  if(!rows.length)h+=`<tr><td colspan="5" class="empty">No companies found</td></tr>`;
+  rows.forEach(c=>h+=`<tr><td><span class="chip">${esc(c.id)}</span></td><td><strong>${esc(c.name)}</strong></td>
   <td><code style="font-size:12px">${esc(c.gstin||'—')}</code></td><td style="font-size:12px">${esc(c.address||'—')}</td>
   <td><div class="act"><button class="ib" onclick="coForm('${c.id}')">Edit</button><button class="ib rd" onclick="delCo('${c.id}')">Delete</button></div></td></tr>`);
   h+=`</table></div></div>`;
-  document.getElementById('pa').innerHTML=h;
+  paintPA(h);
 }
 function coForm(id=''){
   const c=id?COMPANIES.find(x=>x.id===id):{};const isE=!!c.id;
