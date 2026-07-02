@@ -403,7 +403,7 @@ span[style*="color:rgba(255,193,7"]{color:var(--amber)!important}
       <div class="nl">Bills</div>
       <button class="ni" data-p="myreq" onclick="go('myreq')" id="niMyReq"><svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6z"/></svg>My Bill Requests</button>
       <button class="ni" data-p="newreq" onclick="go('newreq')"><svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>New Bill Request</button>
-      <button class="ni" data-p="allreq" onclick="go('allreq')" id="niAll" style="display:none"><svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>All Requests</button>
+      <button class="ni" data-p="allreq" onclick="go('allreq')" id="niAll"><svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>All Requests</button>
       <button class="ni" data-p="pi" onclick="go('pi')" id="niPI" style="display:none"><svg viewBox="0 0 24 24"><path d="M19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/></svg>PI Management</button>
       <button class="ni" data-p="inv" onclick="go('inv')" id="niInv" style="display:none"><svg viewBox="0 0 24 24"><path d="M20 6h-2.18c.07-.44.18-.88.18-1.36C18 2.53 15.47 0 12.36 0c-1.73 0-3.24.93-4.13 2.3L7 4 5.77 2.3C4.88.93 3.37 0 1.64 0-1.47 0-4 2.53-4 5.64c0 .48.11.92.18 1.36H-4v14h24V6z"/></svg>Invoice Upload</button>
       <button class="ni" data-p="payments" onclick="go('payments')" id="niPay" style="display:none"><svg viewBox="0 0 24 24"><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>Payments</button>
@@ -443,7 +443,7 @@ span[style*="color:rgba(255,193,7"]{color:var(--amber)!important}
 // ════════════════════════════════════
 //  CONFIG & STATE
 // ════════════════════════════════════
-const API_URL='https://script.google.com/macros/s/AKfycbw3CYLuc7R6sbwJ5SYItUDm7UC_j3sd-znDEZ3F9QVp5K-vZDouyfR6FnsQVFTysxTp/exec';
+const API_URL='https://script.google.com/macros/s/AKfycbwVg4TWsN0ZEcgxAdFtGsJTFpv0eWteHwHczKV-xU-KJmnrSeH-dV7mxnEogo8T-5X3/exec';
 const GAS_OK=API_URL&&!API_URL.includes('YOUR_GAS');
 const PG=12;
 const DEPTS=['HR Implementation','Recruitment','Payroll Process','Others'];
@@ -474,10 +474,18 @@ function mapRequests(data){
     amount:r.Amount,requestDate:r.RequestDate,byId:r.ByID,
     byName:r.ByName,requestedByAdmin:r.RequestedByAdmin||'',
     dept:r.Dept,status:r.Status,createdAt:r.CreatedAt,
-    piNumber:r.pi?.PINumber||'',piDate:r.pi?.PIDate||'',piFile:null,
+    piNumber:r.pi?.PINumber||'',piDate:r.pi?.PIDate||'',
+    piFile:r.pi?.FileURL||null,
+    piValidUntil:r.pi?.ValidUntil||'',piNotes:r.pi?.Notes||'',
+    gstRate:r.pi?.GSTRate||'',gstAmt:r.pi?.GSTAmt||'',totalAmt:r.pi?.TotalAmt||'',
+    isFinalPI:r.pi?.IsFinal==='TRUE'||r.Status==='Final PI'||r.Status==='Completed',
     invoiceCompany:r.invoice?.Company||'',tallyInv:r.invoice?.TallyInv||'',
     invoiceAmt:r.invoice?.AmountGST||0,invoiceDate:r.invoice?.InvoiceDate||'',
-    invoiceFile:null,statusHistory:[]
+    invoiceFile:r.invoice?.FileURL||null,
+    paymentStatus:r.PaymentStatus||'',paymentDate:r.PaymentDate||'',
+    paymentAmt:r.PaymentAmt||0,paymentRef:r.PaymentRef||'',
+    paymentMode:r.PaymentMode||'',paymentRemarks:r.PaymentRemarks||'',
+    statusHistory:(r.History||[]).map(h=>({status:h.Status,by:h.ChangedBy,at:h.ChangedAt,note:h.Note||''}))
   }));
 }
 // ════════════════════════════════════
@@ -643,7 +651,7 @@ function sBadge(s){
     'Pending for PI':'bPend','PI Created':'bPI','Final PI':'bDone','Completed':'bDone','Payment Received':'bActive','Rejected':'bRej','Paid':'bActive','Partial':'bPI','Overdue':'bRej','Pending':'bPend'};
   return`<span class="bdg ${m[s]||'chip'}">${esc(s)}</span>`;
 }
-function rBadge(r){const m={admin:'bDone',accounts:'bPI',employee:'bNew'};return`<span class="bdg ${m[r]||'chip'}">${esc(r)}</span>`}
+function rBadge(r){const m={admin:'bDone',accounts:'bPI',manager:'bNew'};return`<span class="bdg ${m[r]||'chip'}">${esc(r)}</span>`}
 
 function pg(arr,page,per){const s=(page-1)*per;return{rows:arr.slice(s,s+per),total:arr.length,pages:Math.ceil(arr.length/per)}}
 function pager(total,pages,cur,fn){
@@ -698,6 +706,13 @@ function paintPA(html){
 // can never get painted on top of the new page.
 function stillOn(page){return CUR_PAGE===page}
 
+// True if deptA and deptB (comma-separated lists) share at least one department/service tag
+function _deptOverlapUI(deptA,deptB){
+  if(!deptA||!deptB)return false;
+  const a=String(deptA).split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
+  const b=String(deptB).split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
+  return a.some(x=>b.includes(x));
+}
 // ── Date-range filter (Today / Yesterday / This Week / This Month) ──
 function inDateRange(dateStr,key){
   if(!key)return true;
@@ -740,6 +755,49 @@ function sortHtml(varName,id,renderFn,cur){
 }
 
 // ════════════════════════════════════
+//  FORM DRAFT AUTOSAVE (localStorage)
+//  Protects against lost data if the tab/browser is
+//  closed mid-fill. Saves on every keystroke (debounced),
+//  restores on next visit, and clears itself on submit.
+// ════════════════════════════════════
+const DRAFT_PREFIX='lhr_draft_', DRAFT_MAX_AGE_DAYS=14;
+function draftSave(key,fieldIds,checkboxSelector){
+  try{
+    const data={};
+    fieldIds.forEach(id=>{const el=document.getElementById(id);if(el)data[id]=el.value;});
+    if(checkboxSelector) data.__checks=[...document.querySelectorAll(checkboxSelector)].filter(x=>x.checked).map(x=>x.value);
+    const hasContent=Object.values(data).some(v=>Array.isArray(v)?v.length:String(v||'').trim());
+    if(hasContent) localStorage.setItem(DRAFT_PREFIX+key,JSON.stringify({data,ts:Date.now()}));
+    else localStorage.removeItem(DRAFT_PREFIX+key);
+  }catch(_){}
+}
+function draftClear(key){ try{localStorage.removeItem(DRAFT_PREFIX+key);}catch(_){} }
+// Restores a saved draft (if any, and not stale) into the form, then wires
+// up autosave listeners on every field. Call once right after the form's
+// fields are in the DOM (e.g. inside showPubEnq()/showPubCli()).
+function draftAttach(key,fieldIds,checkboxSelector){
+  let saved=null;
+  try{const raw=localStorage.getItem(DRAFT_PREFIX+key);if(raw)saved=JSON.parse(raw);}catch(_){}
+  if(saved&&saved.data){
+    const ageDays=(Date.now()-(saved.ts||0))/86400000;
+    const hasContent=Object.values(saved.data).some(v=>Array.isArray(v)?v.length:String(v||'').trim());
+    if(ageDays<=DRAFT_MAX_AGE_DAYS&&hasContent){
+      fieldIds.forEach(id=>{const el=document.getElementById(id);if(el&&saved.data[id]!==undefined)el.value=saved.data[id];});
+      if(checkboxSelector&&saved.data.__checks){
+        document.querySelectorAll(checkboxSelector).forEach(x=>{if(saved.data.__checks.includes(x.value))x.checked=true;});
+      }
+      toast('Restored your unsaved draft — resume where you left off','i');
+    }else if(ageDays>DRAFT_MAX_AGE_DAYS){
+      draftClear(key);
+    }
+  }
+  let t=null;
+  const handler=()=>{clearTimeout(t);t=setTimeout(()=>draftSave(key,fieldIds,checkboxSelector),400);};
+  fieldIds.forEach(id=>{const el=document.getElementById(id);if(el){el.addEventListener('input',handler);el.addEventListener('change',handler);}});
+  if(checkboxSelector) document.querySelectorAll(checkboxSelector).forEach(x=>x.addEventListener('change',handler));
+}
+
+// ════════════════════════════════════
 //  ROUTE — PUBLIC FORMS
 // ════════════════════════════════════
 window.addEventListener('DOMContentLoaded',()=>{
@@ -756,6 +814,7 @@ window.addEventListener('DOMContentLoaded',()=>{
 function showPubEnq(){
   document.getElementById('loginWrap').style.display='none';
   document.getElementById('pubEnqWrap').style.display='flex';
+  draftAttach('enquiry',['peOption','peCompany','peContact','peMobile','peEmail','peReq']);
 }
 async function submitPubEnq(){
   const opt=v('peOption'),company=v('peCompany'),contact=v('peContact'),mobile=v('peMobile'),email=v('peEmail'),req=v('peReq');
@@ -787,6 +846,7 @@ async function submitPubEnq(){
     status:'New Client',createdAt:new Date().toISOString(),source:'Public Form',
     statusHistory:[{status:'New Client',at:new Date().toISOString(),by:'Public Form'}]});
   sEnq();
+  draftClear('enquiry');
   document.getElementById('pubEnqBody').innerHTML=`
   <div class="pub-success">
     <div class="ic">🎉</div>
@@ -804,6 +864,7 @@ async function submitPubEnq(){
 function showPubCli(){
   document.getElementById('loginWrap').style.display='none';
   document.getElementById('pubCliWrap').style.display='flex';
+  draftAttach('client',['pcCompany','pcContact','pcMobile','pcEmail','pcGST','pcPAN','pcAddr'],'#pubCliWrap .srv-chk input');
 }
 async function submitPubCli(){
   const company=v('pcCompany'),contact=v('pcContact'),mobile=v('pcMobile'),email=v('pcEmail');
@@ -829,6 +890,7 @@ async function submitPubCli(){
       return;
     }
   }
+  draftClear('client');
   CLIENTS.push({id,company,contact,mobile,email,gst:v('pcGST'),pan:v('pcPAN'),address:v('pcAddr'),
     services,status:'Client Registered',source:'Public Form',
     createdAt:new Date().toISOString(),enquiryId:'',
@@ -920,7 +982,7 @@ async function bootApp(){
   document.getElementById('sbRole').textContent=u.role.toUpperCase();
   const isAcc=u.role==='accounts'||u.role==='admin';
   const isAdm=u.role==='admin';
-  ['niAll','niPI','niInv','niPay'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display=isAcc?'':'none'});
+  ['niPI','niInv','niPay'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display=isAcc?'':'none'});
   ['niAdLbl','niUsers','niCos','niEmp'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display=isAdm?'':'none'});
   // GAS connected — clear local cache, load fresh from sheet
   if(GAS_OK){
@@ -929,10 +991,11 @@ async function bootApp(){
     document.getElementById('pa').innerHTML='<div class="loading"><div class="sp"></div><p>Loading data from server…</p></div>';
     showLoading('Loading data from server…');
     try{
-      const [eRes,cRes,rRes]=await Promise.all([
+      const [eRes,cRes,rRes,coRes]=await Promise.all([
         gasCall('getEnquiries',{}),
         gasCall('getClients',{}),
-        gasCall('getRequests',{})
+        gasCall('getRequests',{}),
+        gasCall('getCompanies',{})
       ]);
       if(eRes.success){
         ENQUIRIES=mapEnquiries(eRes.data);
@@ -950,6 +1013,11 @@ async function bootApp(){
         REQUESTS=mapRequests(rRes.data);
       } else {
         console.error('getRequests failed:',rRes.error);
+      }
+      if(coRes.success){
+        COMPANIES=coRes.data.map(c=>({id:c.CoID,name:c.Name,gstin:c.GSTIN,address:c.Address,createdAt:c.CreatedAt||''}));
+      } else {
+        console.error('getCompanies failed:',coRes.error);
       }
     }catch(e){
       console.error('GAS load error:',e);
@@ -983,8 +1051,8 @@ function toggleSB(){document.getElementById('sb').classList.toggle('open');docum
 // ════════════════════════════════════
 function rDash(){
   const u=SES.user,isAcc=u.role==='accounts'||u.role==='admin';
-  const myEnq=ENQUIRIES.filter(e=>isAcc||e.createdBy===u.id);
-  const myReq=REQUESTS.filter(r=>isAcc||r.byId===u.id);
+  const myEnq=ENQUIRIES.filter(e=>isAcc||e.createdBy===u.username);
+  const myReq=REQUESTS.filter(r=>isAcc||r.byId===u.username);
   const tEnq=ENQUIRIES.length,nEnq=ENQUIRIES.filter(e=>e.status==='New Client').length;
   const tCli=CLIENTS.length,pPi=REQUESTS.filter(r=>r.status==='Pending for PI').length;
   const piC=REQUESTS.filter(r=>r.status==='PI Created').length,done=REQUESTS.filter(r=>r.status==='Completed').length;
@@ -1083,13 +1151,14 @@ function dEnq(){
   if(!pg.length)h+=`<tr><td colspan="9"><div class="empty"><div class="empty-ic">&#8709;</div><p style="color:var(--t3);font-size:14px">No enquiries found</p></div></td></tr>`;
   pg.forEach(r=>{
     const canConv=r.status!=='Old Client';
+    const isAdmU=SES.user.role==='admin';
     const dtStr=r.createdAt?new Date(r.createdAt).toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):fd(r.createdAt);
     h+=`<tr><td><strong style="color:var(--primary);font-weight:700">${esc(r.id)}</strong></td><td>${esc(r.company)}</td><td>${esc(r.contact)}</td><td>${esc(r.mobile)}</td><td style="font-size:12px">${esc(r.email)}</td><td><span class="chip">${esc(r.option||'—')}</span></td><td>${sBadge(r.status)}</td><td style="font-size:12px">${dtStr}</td>
     <td><div class="act">
       <button class="ib tl" onclick="viewEnq('${r.id}')">View</button>
-      <button class="ib" onclick="enqForm('${r.id}')">Edit</button>
+      ${isAdmU?`<button class="ib" onclick="enqForm('${r.id}')">Edit</button>`:''}
       ${canConv?`<button class="ib gr" onclick="convToClient('${r.id}')">→ Convert</button>`:''}
-      <button class="ib rd" onclick="delEnq('${r.id}')">Delete</button>
+      ${isAdmU?`<button class="ib rd" onclick="delEnq('${r.id}')">Delete</button>`:''}
     </div></td></tr>`;
   });
   h+=`</table></div>${pager(total,pages,eP,'epg')}</div>`;
@@ -1138,7 +1207,7 @@ async function saveEnq(id){
     const now=new Date().toISOString();
     const idx=ENQUIRIES.findIndex(x=>x.id===id);
     if(idx>=0){ ENQUIRIES[idx]={...ENQUIRIES[idx],option:opt,company:co,contact:ct,mobile:mb,email:em,status:st,requirement:rq,updatedAt:now}; }
-    else{ ENQUIRIES.unshift({id,option:opt,company:co,contact:ct,mobile:mb,email:em,status:st||'New Enquiry',requirement:rq,createdAt:now,updatedAt:now,createdBy:SES.user.id,source:'Internal',statusHistory:[]}); }
+    else{ ENQUIRIES.unshift({id,option:opt,company:co,contact:ct,mobile:mb,email:em,status:st||'New Enquiry',requirement:rq,createdAt:now,updatedAt:now,createdBy:SES.user.username,source:'Internal',statusHistory:[]}); }
     sEnq();closeM();toast(id?'Enquiry updated ✅':'Enquiry created ✅','s');dEnq();return;
   }
   if(id){
@@ -1149,7 +1218,7 @@ async function saveEnq(id){
     const nid=id||eid();
     const now=new Date().toISOString();
     ENQUIRIES.push({id:nid,option:opt,company:co,contact:ct,mobile:mb,email:em,status:st||'New Client',
-      requirement:rq,createdAt:now,updatedAt:now,createdBy:SES.user.id,source:'Internal',
+      requirement:rq,createdAt:now,updatedAt:now,createdBy:SES.user.username,source:'Internal',
       statusHistory:[{status:st||'New Client',by:SES.user.name,at:now}]});
   }
   sEnq();closeM();toast(id?'Enquiry updated':'Enquiry created','s');rEnq();
@@ -1171,10 +1240,20 @@ function viewEnq(id){
   ${r.requirement?`<div style="margin-top:10px"><div class="ii"><label>Requirement</label><span>${esc(r.requirement)}</span></div></div>`:''}
   <div class="fsec">Status History</div>
   <div class="tl">${(r.statusHistory||[]).map(h=>`<div class="tli"><div class="tld done">✅</div><div class="tli-i"><strong>${esc(h.status)}</strong><span>${fd(h.at)} • ${esc(h.by||'—')}</span></div></div>`).join('')}</div>`,
-  `<button class="btn bout" onclick="closeM()">Close</button><button class="btn badd" onclick="closeM();enqForm('${id}')">✏️ Edit</button>${r.status!=='Old Client'?`<button class="btn bteal" onclick="closeM();convToClient('${id}')">Convert to Client</button>`:''}`,
+  `<button class="btn bout" onclick="closeM()">Close</button>${SES.user.role==='admin'?`<button class="btn badd" onclick="closeM();enqForm('${id}')">✏️ Edit</button>`:''}${r.status!=='Old Client'?`<button class="btn bteal" onclick="closeM();convToClient('${id}')">Convert to Client</button>`:''}`,
   'lg');
 }
-function delEnq(id){if(!confirm('Delete this enquiry?'))return;ENQUIRIES=ENQUIRIES.filter(x=>x.id!==id);sEnq();toast('Deleted','s');dEnq()}
+async function delEnq(id){
+  if(SES.user.role!=='admin'){toast('Only Admin can delete records','e');return}
+  if(!confirm('Delete this enquiry? This cannot be undone.'))return;
+  if(GAS_OK){
+    showLoading('Deleting…');
+    const res=await gasCall('deleteEnquiry',{id});
+    hideLoading();
+    if(!res.success){toast(res.error||'Delete failed','e');return}
+  }
+  ENQUIRIES=ENQUIRIES.filter(x=>x.id!==id);sEnq();toast('Deleted','s');dEnq()
+}
 function convToClient(enqId){
   const r=ENQUIRIES.find(x=>x.id===enqId);if(!r)return;
   // Check duplicate
@@ -1267,7 +1346,7 @@ function dClients(){
   </div>
   <div class="tw"><table><tr><th>Client ID</th><th>Company</th><th>Contact</th><th>Mobile</th><th>GSTIN</th><th>GST Type</th><th>Status</th><th>Enq ID</th><th>Actions</th></tr>`;
   if(!pg.length)h+=`<tr><td colspan="10"><div class="empty"><div class="empty-ic">🏢</div><p>No clients found</p></div></td></tr>`;
-  pg.forEach(r=>h+=`<tr>
+  pg.forEach(r=>{const isAdmU=SES.user.role==='admin';h+=`<tr>
     <td><strong style="color:var(--teal)">${esc(r.id)}</strong></td>
     <td><strong>${esc(r.company)}</strong><br><span style="font-size:11px;color:var(--t3)">${esc(r.city||'')}${r.state?', '+esc(r.state):''}</span></td>
     <td>${esc(r.contact)}</td>
@@ -1278,10 +1357,10 @@ function dClients(){
     <td>${r.enquiryId?`<a href="#" onclick="viewEnq('${r.enquiryId}');return false" style="color:var(--accent);font-size:12px">${esc(r.enquiryId)}</a>`:'—'}</td>
     <td><div class="act">
       <button class="ib" onclick="viewCli('${r.id}')">👁</button>
-      <button class="ib" onclick="cliForm('${r.id}')">✏️</button>
+      ${isAdmU?`<button class="ib" onclick="cliForm('${r.id}')">✏️</button>`:''}
       <button class="ib gr" onclick="newReqFromCli('${r.id}')">💼</button>
-      <button class="ib rd" onclick="delCli('${r.id}')">🗑️</button>
-    </div></td></tr>`);
+      ${isAdmU?`<button class="ib rd" onclick="delCli('${r.id}')">🗑️</button>`:''}
+    </div></td></tr>`;});
   h+=`</table></div>${pager(total,pages,cP,'cpg')}</div>`;
   paintPA(h);
 }
@@ -1448,27 +1527,47 @@ function viewCli(id){
   <div class="fsec">Services Required</div>
   <div>${(r.services||[]).map(s=>`<span class="chip">${esc(s)}</span>`).join('')||'None specified'}</div>
   ${r.statusHistory?.length?`<div class="fsec">History</div><div class="tl">${r.statusHistory.map(h=>`<div class="tli"><div class="tld done">✅</div><div class="tli-i"><strong>${esc(h.status)}</strong><span>${fd(h.at)} • ${esc(h.by||'—')}</span></div></div>`).join('')}</div>`:''}`,
-  `<button class="btn bout" onclick="closeM()">Close</button><button class="btn badd" onclick="closeM();cliForm('${id}')">✏️ Edit</button><button class="btn bteal" onclick="closeM();newReqFromCli('${id}')">💼 Bill Request</button>`,'lg');
+  `<button class="btn bout" onclick="closeM()">Close</button>${SES.user.role==='admin'?`<button class="btn badd" onclick="closeM();cliForm('${id}')">✏️ Edit</button>`:''}<button class="btn bteal" onclick="closeM();newReqFromCli('${id}')">💼 Bill Request</button>`,'lg');
 }
-function delCli(id){if(!confirm('Delete this client?'))return;CLIENTS=CLIENTS.filter(x=>x.id!==id);sCli();toast('Deleted','s');dClients()}
+async function delCli(id){
+  if(SES.user.role!=='admin'){toast('Only Admin can delete records','e');return}
+  if(!confirm('Delete this client? This cannot be undone.'))return;
+  if(GAS_OK){
+    showLoading('Deleting…');
+    const res=await gasCall('deleteClient',{id});
+    hideLoading();
+    if(!res.success){toast(res.error||'Delete failed','e');return}
+  }
+  CLIENTS=CLIENTS.filter(x=>x.id!==id);sCli();toast('Deleted','s');dClients()
+}
 function newReqFromCli(id){const r=CLIENTS.find(x=>x.id===id);if(r){_prefillReq=r;}go('newreq')}
 
 // ════════════════════════════════════
 //  BILL REQUESTS
 // ════════════════════════════════════
 let _prefillReq=null;
-function rNewReq(){
+let STAFF=[];
+async function loadStaff(){
+  if(!GAS_OK)return STAFF;
+  const res=await gasCall('getStaffList',{});
+  if(res.success){
+    STAFF=(res.data||[]).map(u=>({id:u.UserID,name:u.Name,role:u.Role}));
+  }
+  return STAFF;
+}
+async function rNewReq(){
   const u=SES.user;const p=_prefillReq||{};_prefillReq=null;
+  await loadStaff();
+  if(!stillOn('newreq'))return;
   const cliOpts=CLIENTS.map(c=>`<option value="${esc(c.id)}" ${p.id===c.id?'selected':''}>${esc(c.company)}</option>`).join('');
-  const empOpts=USERS.map(u2=>`<option value="${esc(u2.name)}" ${u2.name===u.name?'selected':''}>${esc(u2.name)}</option>`).join('');
-  const adminOpts=USERS.filter(x=>x.role==='admin').map(u2=>`<option value="${esc(u2.name)}">${esc(u2.name)}</option>`).join('');
+  const empSrc=STAFF.length?STAFF:USERS;
+  const empOpts=empSrc.filter(x=>x.role==='manager'||x.role==='admin').map(u2=>`<option value="${esc(u2.name)}" ${u2.name===u.name?'selected':''}>${esc(u2.name)}</option>`).join('');
   document.getElementById('pa').innerHTML=`
-  <div class="ph"><h2>New Bill Request</h2><p class="ph-sub">Raise a billing request — PI will be auto-generated</p></div>
+  <div class="ph"><h2>New Bill Request</h2><p class="ph-sub">Raise a billing request — sent directly to Accounts, PI will be auto-generated</p></div>
   <div class="card">
     <div class="fsec" style="margin-top:0">Request Details</div>
     <div class="fg">
       <div class="ff"><label>Employee Name (Requested By) *</label><select id="rBy"><option value="">Select Employee…</option>${empOpts}</select></div>
-      <div class="ff"><label>Bill Requested By (Admin) *</label><select id="rReqBy"><option value="">Select Admin…</option>${adminOpts}</select></div>
       <div class="ff"><label>Department</label><input id="rDept" value="${esc(Array.isArray(u.dept)?u.dept.join(', '):(u.dept||''))}" readonly></div>
       <div class="ff"><label>Bill Request Date *</label><input id="rDate" type="date" value="${tod()}"></div>
       <div class="ff"><label>Billing Amount (₹) *</label><input id="rAmt" type="number" placeholder="0.00" min="0"></div>
@@ -1485,7 +1584,7 @@ function rNewReq(){
     </div>
     <div class="fsec">Billing Info</div>
     <div class="fg">
-      <div class="ff s2"><label>Purpose of Billing *</label><textarea id="rPurpose" placeholder="Describe what this bill is for…"></textarea></div>
+      <div class="ff s2"><label>Purpose of Billing</label><textarea id="rPurpose" placeholder="Describe what this bill is for…"></textarea></div>
       <div class="ff"><label>HSN / SAC Code</label><input id="rHSN" placeholder="e.g. 998312"></div>
       <div class="ff"><label>GST Rate</label><select id="rGST"><option value="18">18%</option><option value="12">12%</option><option value="9">9%</option><option value="5">5%</option><option value="0">0% (Exempt)</option></select></div>
     </div>
@@ -1504,9 +1603,9 @@ function fillCliDetails(sel){
   if(r.gstRate){const gs=document.getElementById('rGST');if(gs)gs.value=r.gstRate;}
 }
 async function submitReq(){
-  const byName=v('rBy'),reqBy=v('rReqBy'),nm=v('rCliName'),em=v('rCliMail'),dt=v('rDate'),amt=v('rAmt'),pur=v('rPurpose');
-  if(!byName||!reqBy){toast('Select Employee Name and Admin Name','e');return}
-  if(!nm||!em||!dt||!amt||!pur){toast('Fill all required fields','e');return}
+  const byName=v('rBy'),nm=v('rCliName'),em=v('rCliMail'),dt=v('rDate'),amt=v('rAmt'),pur=v('rPurpose');
+  if(!byName){toast('Select Employee Name','e');return}
+  if(!nm||!em||!dt||!amt){toast('Fill all required fields','e');return}
   if(isNaN(amt)||+amt<=0){toast('Enter valid amount','e');return}
   const gstRate=+v('rGST')||18;
   const gstAmt=(+amt)*gstRate/100;
@@ -1515,8 +1614,7 @@ async function submitReq(){
   const now=new Date().toISOString();
   const payload={clientId:v('rCliSel'),clientName:nm,clientMail:em,ccMail:v('rCC'),
     clientAddr:v('rCliAddr'),clientGST:v('rCliGST'),clientPAN:v('rCliPAN'),
-    requestDate:dt,amount:+amt,gstRate,gstAmt,totalAmt,hsn:v('rHSN'),purpose:pur,
-    requestedByAdmin:reqBy};
+    requestDate:dt,amount:+amt,gstRate,gstAmt,totalAmt,hsn:v('rHSN'),purpose:pur};
   showLoading('Submitting bill request…');
   if(GAS_OK){
     const res=await gasCall('saveRequest',payload);
@@ -1524,7 +1622,7 @@ async function submitReq(){
     if(!res.success){toast(res.error||'Submit failed','e');return}
     if(res.id) id=res.id;
   } else { hideLoading(); }
-  REQUESTS.push({id,...payload,byId:SES.user.id,byName,requestedByAdmin:reqBy,
+  REQUESTS.push({id,...payload,byId:SES.user.username,byName,
     dept:v('rDept')||SES.user.dept||'—',status:'Pending for PI',createdAt:now,
     piNumber:'',piDate:'',piFile:null,isFinalPI:false,
     invoiceCompany:'',tallyInv:'',invoiceAmt:0,invoiceDate:'',invoiceFile:null,
@@ -1547,15 +1645,20 @@ async function rMyReq(){
   dMyReq();
 }
 function dMyReq(){
-  let rows=[...REQUESTS].filter(r=>SES.user.role!=='employee'||r.byId===SES.user.id);
+  const u=SES.user,isAcc=u.role==='accounts'||u.role==='admin';
+  // Backend now returns every request to every logged-in user (view-only,
+  // per company policy). This page still narrows to "mine" for the
+  // employee's own convenience — full company-wide visibility remains
+  // one click away on the "All Requests" page.
+  let rows=isAcc?[...REQUESTS]:REQUESTS.filter(r=>r.byId===u.username||_deptOverlapUI(r.dept,u.dept));
   if(mSr)rows=rows.filter(r=>(r.id+r.clientName+r.purpose+r.piNumber).toLowerCase().includes(mSr.toLowerCase()));
   if(mSt2)rows=rows.filter(r=>r.status===mSt2);
   if(mDF)rows=rows.filter(r=>inDateRange(r.createdAt,mDF));
   rows=sortRows(rows,mSO,'clientName','createdAt');
   const {rows:pg,total,pages}=pg_r(rows,mP,PG);
-  let h=`<div class="ph"><div><h2>My Bill Requests</h2><p class="ph-sub">${total} requests</p></div>
+  let h=`<div class="ph"><div><h2>${SES.user.role==='manager'?'My & Department Requests':'My Bill Requests'}</h2><p class="ph-sub">${total} requests${SES.user.role==='manager'?' — yours plus your department':''}</p></div>
   <div class="ph-act">
-    <button class="btn bexp" onclick="xls(rows2xls([...REQUESTS]),'my_requests')">Export Excel</button>
+    <button class="btn bexp" onclick="exportMyReq()">Export Excel</button>
     <button class="btn badd" onclick="go('newreq')">+ New Request</button>
   </div></div>
   <div class="card"><div class="tbar">
@@ -1581,6 +1684,11 @@ function dMyReq(){
   paintPA(h);
 }
 function mpg(p){mP=p;dMyReq()}
+function exportMyReq(){
+  const u=SES.user,isAcc=u.role==='accounts'||u.role==='admin';
+  const rows=isAcc?[...REQUESTS]:REQUESTS.filter(r=>r.byId===u.username||_deptOverlapUI(r.dept,u.dept));
+  xls(rows2xls(rows),'my_requests');
+}
 function rows2xls(rows){return rows.map(r=>({'Request ID':r.id,'Client':r.clientName,'Email':r.clientMail,'Amount':r.amount,'Date':r.requestDate,'By':r.byName,'Dept':r.dept,'Status':r.status,'PI No':r.piNumber||'','Tally Invoice':r.tallyInv||''}))}
 function dlFile(id,type){const r=REQUESTS.find(x=>x.id===id);if(!r)return;const f=type==='pi'?r.piFile:r.invoiceFile;if(!f){toast('File not available','w');return}const a=document.createElement('a');a.href=f;a.download=(type==='pi'?'PI_':'Invoice_')+id;a.click()}
 
@@ -1606,6 +1714,7 @@ function dAllReq(){
   if(aDF)rows=rows.filter(r=>inDateRange(r.createdAt,aDF));
   rows=sortRows(rows,aSO,'clientName','createdAt');
   const depts=[...new Set(REQUESTS.map(r=>r.dept))].filter(Boolean);
+  const isAcc=SES.user.role==='accounts'||SES.user.role==='admin';
   const {rows:pg,total,pages}=pg_r(rows,aP,PG);
   let h=`<div class="ph"><div><h2>All Requests</h2><p class="ph-sub">${total} total</p></div>
   <button class="btn bexp" onclick="xls(rows2xls(rows),'all_requests')">Export Excel</button></div>
@@ -1616,15 +1725,15 @@ function dAllReq(){
     ${dateFilterHtml('aDF','aDFSel','dAllReq',aDF)}
     ${sortHtml('aSO','aSOSel','dAllReq',aSO)}
   </div>
-  <div class="tw"><table><tr><th>Request ID</th><th>Client</th><th>Amount</th><th>Employee</th><th>Requested By</th><th>Dept</th><th>PI No</th><th>Status</th><th>Date</th><th>Actions</th></tr>`;
-  if(!pg.length)h+=`<tr><td colspan="10"><div class="empty"><div class="empty-ic">&#8709;</div><p style="color:var(--t3);font-size:14px">No requests found</p></div></td></tr>`;
+  <div class="tw"><table><tr><th>Request ID</th><th>Client</th><th>Amount</th><th>Employee</th><th>Dept</th><th>PI No</th><th>Status</th><th>Date</th><th>Actions</th></tr>`;
+  if(!pg.length)h+=`<tr><td colspan="9"><div class="empty"><div class="empty-ic">&#8709;</div><p style="color:var(--t3);font-size:14px">No requests found</p></div></td></tr>`;
   pg.forEach(r=>h+=`<tr><td><strong style="color:var(--primary);font-weight:700">${esc(r.id)}</strong></td><td>${esc(r.clientName)}</td>
-  <td class="amt">${fmt(r.amount)}</td><td>${esc(r.byName)}</td><td><span class="chip">${esc(r.requestedByAdmin||'—')}</span></td><td><span class="chip">${esc(r.dept)}</span></td>
+  <td class="amt">${fmt(r.amount)}</td><td>${esc(r.byName)}</td><td><span class="chip">${esc(r.dept)}</span></td>
   <td>${r.piNumber?`<span style="color:var(--teal);font-weight:700">${esc(r.piNumber)}</span>`:'—'}</td>
   <td>${sBadge(r.status)}</td><td style="font-size:12px">${fd(r.createdAt)}</td>
   <td><div class="act"><button class="ib tl" onclick="viewReq('${r.id}')">View</button>
-  ${r.status==='Pending for PI'?`<button class="ib gr" onclick="go('pi')">Create PI</button>`:''}
-  ${r.status==='Final PI'?`<button class="ib gr" onclick="go('inv')">Upload Invoice</button>`:r.status==='PI Created'?'<span style="font-size:11px;color:var(--amber);font-style:italic">Finalise PI First</span>':''}
+  ${isAcc&&r.status==='Pending for PI'?`<button class="ib gr" onclick="go('pi')">Create PI</button>`:''}
+  ${isAcc&&r.status==='Final PI'?`<button class="ib gr" onclick="go('inv')">Upload Invoice</button>`:isAcc&&r.status==='PI Created'?'<span style="font-size:11px;color:var(--amber);font-style:italic">Finalise PI First</span>':''}
   </div></td></tr>`);
   h+=`</table></div>${pager(total,pages,aP,'apg')}</div>`;
   paintPA(h);
@@ -1644,7 +1753,6 @@ function viewReq(id){
     <div class="ii"><label>Request ID</label><span style="color:var(--primary);font-size:15px;font-weight:800">${esc(r.id)}</span></div>
     <div class="ii"><label>Bill Request Date</label><span>${fd(r.requestDate)}</span></div>
     <div class="ii"><label>Employee (Requested By)</label><span>${esc(r.byName)}</span></div>
-    <div class="ii"><label>Bill Requested By (Admin)</label><span>${esc(r.requestedByAdmin||'—')}</span></div>
     <div class="ii"><label>Department</label><span>${esc(r.dept)}</span></div>
     <div class="ii"><label>Created At</label><span>${r.createdAt?new Date(r.createdAt).toLocaleString('en-IN'):'—'}</span></div>
     <div class="ii"><label>Client</label><span>${esc(r.clientName)}</span></div>
@@ -1663,15 +1771,15 @@ function viewReq(id){
   <div class="ii"><label>Amount (GST)</label><span class="amt" style="color:var(--green)">${fmt(r.invoiceAmt)}</span></div>
   <div class="ii"><label>Invoice Date</label><span>${fd(r.invoiceDate)}</span></div></div>
   ${r.invoiceFile?`<div class="fprev">🧾 <a href="${r.invoiceFile}" download="Invoice_${r.id}">Download Final Invoice</a></div>`:''}`;}
-  body+=`<div class="fsec">Status History</div><div class="tl">
-  ${(r.statusHistory||[]).map(h=>`<div class="tli"><div class="tld done">✅</div><div class="tli-i"><strong>${esc(h.status)}</strong><span>${fd(h.at)} • ${esc(h.by||'—')}</span></div></div>`).join('')}</div>`;
+  body+=`<div class="fsec">Status &amp; Communication History</div><div class="tl">
+  ${(r.statusHistory||[]).length?r.statusHistory.map(h=>`<div class="tli"><div class="tld done">✅</div><div class="tli-i"><strong>${esc(h.status)}</strong><span>${h.at?new Date(h.at).toLocaleString('en-IN'):'—'} • ${esc(h.by||'—')}</span>${h.note?`<div style="font-size:12px;color:var(--t3);margin-top:2px">${esc(h.note)}</div>`:''}</div></div>`).join(''):'<div style="font-size:12px;color:var(--t3);padding:6px 0">No history yet</div>'}</div>`;
   let foot=`<button class="btn bout" onclick="closeM()">Close</button>`;
   if(isAcc&&(r.status==='Pending for PI'))foot+=`<button class="btn bteal" onclick="closeM();piForm('${id}')">Create PI</button>`;
   if(r.piNumber)foot+=`<button class="btn bteal" onclick="downloadPIPDF('${id}',false)">Download PI PDF</button>`;
   if(r.isFinalPI)foot+=`<button class="btn badd" onclick="downloadPIPDF('${id}',true)">Download Final PI</button>`;
   if(isAcc&&r.status==='Final PI')foot+=`<button class="btn borg" onclick="closeM();invForm('${id}')">Upload Invoice</button>`;
   if(isAcc&&r.status==='PI Created')foot+=`<button class="btn bout" style="cursor:not-allowed;opacity:.5" title="Set PI to Final first" disabled>Finalise PI First</button>`;
-  if(isAcc&&r.status==='Completed'&&!r.paymentStatus)foot+=`<button class="btn bteal" onclick="closeM();paymentForm('${id}')">Update Payment</button>`;
+  if(isAcc&&r.status==='Completed'&&r.paymentStatus!=='Paid')foot+=`<button class="btn bteal" onclick="closeM();paymentForm('${id}')">${r.paymentStatus?'Update Payment':'Record Payment'}</button>`;
   openM(`Request: ${id}`,body,foot,'lg');
 }
 
@@ -1916,9 +2024,14 @@ function dInv(){
   paintPA(h);
 }
 function ivpg(p){ivP=p;dInv()}
-function invForm(reqId){
+async function invForm(reqId){
   const r=REQUESTS.find(x=>x.id===reqId);if(!r)return;
   if(!r.isFinalPI&&r.status!=='Final PI'){toast('Cannot create invoice — set PI to Final first!','e');return;}
+  if(!COMPANIES.length&&GAS_OK){
+    try{const res=await gasCall('getCompanies',{});
+      if(res.success)COMPANIES=res.data.map(c=>({id:c.CoID,name:c.Name,gstin:c.GSTIN,address:c.Address,createdAt:c.CreatedAt||''}));
+    }catch(e){console.warn('Company load error:',e);}
+  }
   const coOpts=COMPANIES.map(c=>`<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('');
   openM(`Upload Invoice — ${reqId}`,`
   <div style="background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:15px;font-size:14px">
@@ -1973,7 +2086,7 @@ async function rPayments(){
   dPayments();
 }
 function dPayments(){
-  let rows=REQUESTS.filter(r=>r.status==='Completed'||r.status==='Payment Received'||r.paymentStatus);
+  let rows=REQUESTS.filter(r=>r.status==='Completed'||r.paymentStatus);
   if(pmSr)rows=rows.filter(r=>(r.id+r.clientName+(r.tallyInv||'')+(r.paymentRef||'')).toLowerCase().includes(pmSr.toLowerCase()));
   if(pmDF)rows=rows.filter(r=>inDateRange(r.createdAt,pmDF));
   rows=sortRows(rows,pmSO,'clientName','createdAt');
@@ -2075,8 +2188,7 @@ async function savePayment(reqId){
   }
   const idx=REQUESTS.findIndex(x=>x.id===reqId);
   if(idx>=0){
-    REQUESTS[idx]={...REQUESTS[idx],paymentStatus:status,paymentDate:dt,paymentAmt:+amt,paymentRef:ref,paymentMode:mode,paymentRemarks:remarks,
-      status:status==='Paid'?'Payment Received':'Completed'};
+    REQUESTS[idx]={...REQUESTS[idx],paymentStatus:status,paymentDate:dt,paymentAmt:+amt,paymentRef:ref,paymentMode:mode,paymentRemarks:remarks};
     REQUESTS[idx].statusHistory.push({status:'Payment: '+status,by:SES.user.name,at:new Date().toISOString(),note:ref});
   }
   sReq();closeM();toast('Payment updated! 💳','s');
@@ -2192,7 +2304,7 @@ function uForm(id=''){
     <div class="ff"><label>Full Name *</label><input id="uN" value="${esc(u.name||'')}"></div>
     <div class="ff"><label>Employee ID</label><input id="uEmpId" value="${esc(u.empId||'')}"></div>
     <div class="ff"><label>Designation</label><input id="uDesig" value="${esc(u.designation||'')}"></div>
-    <div class="ff"><label>Role *</label><select id="uR"><option value="employee">Employee</option><option value="accounts">Accounts</option><option value="admin">Admin</option></select></div>
+    <div class="ff"><label>Role *</label><select id="uR"><option value="manager">Manager</option><option value="accounts">Accounts</option><option value="admin">Admin</option></select></div>
     <div class="ff s2"><label>Email</label><input id="uE" type="email" value="${esc(u.email||'')}"></div>
     <div class="ff"><label>Mobile</label><input id="uMob" value="${esc(u.mobile||'')}"></div>
     <div class="ff"><label>Date of Joining</label><input id="uDOJ" type="date" value="${esc(u.doj||'')}"></div>
@@ -2201,7 +2313,7 @@ function uForm(id=''){
   <div class="fsec">Department / Service Access *</div>
   <div class="srv-chk" id="uDeptChk">${deptChk}</div>`,
   `<button class="btn bout" onclick="closeM()">Cancel</button><button class="btn badd" onclick="saveU('${id}')">Save User</button>`,'lg');
-  if(isE)setTimeout(()=>{document.getElementById('uR').value=u.role||'employee';},50);
+  if(isE)setTimeout(()=>{document.getElementById('uR').value=u.role||'manager';},50);
 }
 async function saveU(id){
   const un=v('uU'),nm=v('uN'),rl=v('uR'),em=v('uE'),pw=v('uP');
@@ -2225,6 +2337,7 @@ async function saveU(id){
   sUsers();closeM();toast('Saved','s');refreshUserPage();
 }
 async function delU(id){
+  if(id===SES.user.id){toast("You can't delete your own account while logged in",'e');return}
   if(!confirm('Delete user?'))return;
   if(GAS_OK){
     showLoading('Deleting…');
