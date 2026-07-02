@@ -14,6 +14,7 @@
   --purple:#7c3aed;--amber:#d97706;--pink:#be185d;
   --bg:#f1f5f9;--bg2:#e2e8f0;--card:#ffffff;--border:#e2e8f0;--border2:#cbd5e1;
   --t1:#0f172a;--t2:#334155;--t3:#64748b;--t4:#94a3b8;
+  --accent:#4f46e5;--navy:#1a2340;
   --sh:0 1px 3px rgba(0,0,0,.08),0 4px 16px rgba(0,0,0,.06);
   --sh2:0 4px 24px rgba(0,0,0,.10),0 1px 4px rgba(0,0,0,.06);
   --sh3:0 8px 40px rgba(30,64,175,.14);
@@ -653,7 +654,6 @@ function sBadge(s){
 }
 function rBadge(r){const m={admin:'bDone',accounts:'bPI',manager:'bNew'};return`<span class="bdg ${m[r]||'chip'}">${esc(r)}</span>`}
 
-function pg(arr,page,per){const s=(page-1)*per;return{rows:arr.slice(s,s+per),total:arr.length,pages:Math.ceil(arr.length/per)}}
 function pager(total,pages,cur,fn){
   if(pages<=1)return'';
   let h=`<div class="pgn"><button class="pgb" onclick="${fn}(${cur-1})" ${cur<=1?'disabled':''}>‹</button>`;
@@ -664,6 +664,16 @@ function pager(total,pages,cur,fn){
   return h;
 }
 function fileToB64(f){return new Promise((r,j)=>{const fr=new FileReader();fr.onload=e=>r(e.target.result);fr.onerror=j;fr.readAsDataURL(f)})}
+// Uploads go through GAS as a base64 JSON POST body (~33% larger than the
+// original file) — large files can fail or hang with no clear error, so we
+// cap client-side and tell the user immediately instead of letting a huge
+// upload silently time out.
+const MAX_FILE_MB=8;
+function checkFileSize(file){
+  if(!file)return true;
+  if(file.size>MAX_FILE_MB*1024*1024){toast(`File too large (max ${MAX_FILE_MB}MB) — please compress or resize`,'e');return false;}
+  return true;
+}
 function xls(data,name){
   if(!data?.length){toast('No data to export','w');return}
   const H=Object.keys(data[0]);
@@ -943,7 +953,23 @@ async function doLogin(){
     showErr('lerr','Invalid username or password');
   }
 }
-function doLogout(){SES=null;sessionStorage.removeItem('lhr_ses');sessionStorage.removeItem('lhr_creds');document.getElementById('shell').classList.remove('show');document.getElementById('loginWrap').style.display='flex';sv('lgU','');sv('lgP','')}
+async function doLogout(){
+  const tok=SES&&SES.token;
+  SES=null;sessionStorage.removeItem('lhr_ses');sessionStorage.removeItem('lhr_creds');
+  document.getElementById('shell').classList.remove('show');
+  document.getElementById('loginWrap').style.display='flex';
+  sv('lgU','');sv('lgP','');
+  // Revoke the session token server-side too — previously this only cleared
+  // local storage, leaving the token valid in the Sessions sheet for up to
+  // 24h (a real risk on a shared machine). Fire-and-forget: the user is
+  // already back at the login screen regardless of whether this succeeds.
+  if(GAS_OK&&tok){
+    try{
+      await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain'},
+        body:JSON.stringify({action:'logout',token:tok})});
+    }catch(_){}
+  }
+}
 function togglePwd(){const i=document.getElementById('lgP');i.type=i.type==='password'?'text':'password'}
 function showErr(id,m){const e=document.getElementById(id);if(e){e.textContent=m;e.style.display='block'}}
 
@@ -1133,9 +1159,10 @@ function dEnq(){
   rows=sortRows(rows,eSO,'company','createdAt');
   const {rows:pg,total,pages}=pg_fn(rows,eP);
   const expD=rows.map(r=>({'Enquiry ID':r.id,'Company':r.company,'Contact':r.contact,'Mobile':r.mobile,'Email':r.email,'Service':r.option,'Requirement':r.requirement,'Status':r.status,'Date':fd(r.createdAt),'Source':r.source||'Internal'}));
+  window._enqExport=expD; // avoid embedding raw JSON inside an HTML attribute (broke on quotes)
   let h=`<div class="ph"><div><h2>Enquiries</h2><p class="ph-sub">${total} total enquiries</p></div>
   <div class="ph-act">
-    <button class="btn bexp" onclick="xls(${JSON.stringify(expD).replace(/'/g,"\\'")},'enquiries')">Export Excel</button>
+    <button class="btn bexp" onclick="xls(window._enqExport,'enquiries')">Export Excel</button>
     <button class="btn badd" onclick="enqForm()">+ New Enquiry</button>
   </div></div>
   <div class="card">
@@ -1330,9 +1357,10 @@ function dClients(){
   rows=sortRows(rows,cSO,'company','createdAt');
   const {rows:pg,total,pages}=pg_r(rows,cP,PG);
   const expD=rows.map(r=>({'Client ID':r.id,'Company':r.company,'Contact':r.contact,'Mobile':r.mobile,'Email':r.email,'GST':r.gst||'','PAN':r.pan||'','Services':(r.services||[]).join('; '),'Status':r.status,'Date':fd(r.createdAt),'Enquiry ID':r.enquiryId||''}));
+  window._cliExport=expD; // avoid embedding raw JSON inside an HTML attribute (broke on quotes)
   let h=`<div class="ph"><div><h2>Client Master</h2><p class="ph-sub">${total} clients | Customer Database</p></div>
   <div class="ph-act">
-    <button class="btn bexp" onclick="xls(${JSON.stringify(expD).replace(/'/g,"\\'")},'clients')">Export Excel</button>
+    <button class="btn bexp" onclick="xls(window._cliExport,'clients')">Export Excel</button>
     <button class="btn badd" onclick="cliForm()">+ Add Client</button>
   </div></div>
   <div class="card">
@@ -1345,7 +1373,7 @@ function dClients(){
     ${sortHtml('cSO','cSOSel','dClients',cSO)}
   </div>
   <div class="tw"><table><tr><th>Client ID</th><th>Company</th><th>Contact</th><th>Mobile</th><th>GSTIN</th><th>GST Type</th><th>Status</th><th>Enq ID</th><th>Actions</th></tr>`;
-  if(!pg.length)h+=`<tr><td colspan="10"><div class="empty"><div class="empty-ic">🏢</div><p>No clients found</p></div></td></tr>`;
+  if(!pg.length)h+=`<tr><td colspan="9"><div class="empty"><div class="empty-ic">🏢</div><p>No clients found</p></div></td></tr>`;
   pg.forEach(r=>{const isAdmU=SES.user.role==='admin';h+=`<tr>
     <td><strong style="color:var(--teal)">${esc(r.id)}</strong></td>
     <td><strong>${esc(r.company)}</strong><br><span style="font-size:11px;color:var(--t3)">${esc(r.city||'')}${r.state?', '+esc(r.state):''}</span></td>
@@ -1445,14 +1473,21 @@ function updateGSTType(){
   if(appl==='no'){typeEl.value='Exempt';return;}
   // Auto suggest based on state vs company state
   const selectedState=stateEl?stateEl.value:'';
-  // Link HR is in Maharashtra — if client is also Maharashtra → CGST+SGST else IGST
-  const OUR_STATE='Maharashtra';
+  // Link HR's registered state, used to decide CGST+SGST (same state) vs IGST
+  // (inter-state) for a client. NOTE: this was hardcoded to 'Maharashtra',
+  // which doesn't match Link HR's Lucknow (Uttar Pradesh) office — set to
+  // 'Uttar Pradesh' here; change this one line if the GST-registered state
+  // is actually different.
+  const OUR_STATE='Uttar Pradesh';
   if(selectedState&&selectedState!==OUR_STATE) typeEl.value='IGST';
   else typeEl.value='CGST+SGST';
 }
 async function saveCli(id){
-  const co=v('cCo'),ct=v('cCt'),mb=v('cMb'),em=v('cEm');
+  const co=v('cCo'),ct=v('cCt'),mb=v('cMb'),em=v('cEm'),gst=v('cGST').toUpperCase(),pan=v('cPAN').toUpperCase();
   if(!co||!ct||!mb||!em){toast('Fill required fields','e');return}
+  if(!/^\S+@\S+\.\S+$/.test(em)){toast('Enter a valid email address','e');return}
+  if(gst&&!/^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(gst)){toast('GSTIN format looks wrong — expected 15 characters like 09AABCS1429B1ZB','e');return}
+  if(pan&&!/^[A-Z]{5}\d{4}[A-Z]{1}$/.test(pan)){toast('PAN format looks wrong — expected 10 characters like AABCS1429B','e');return}
   const services=[...document.querySelectorAll('#mb .srv-chk input:checked')].map(x=>x.value);
   const payload={
     company:co,contact:ct,mobile:mb,email:em,
@@ -1614,7 +1649,8 @@ async function submitReq(){
   const now=new Date().toISOString();
   const payload={clientId:v('rCliSel'),clientName:nm,clientMail:em,ccMail:v('rCC'),
     clientAddr:v('rCliAddr'),clientGST:v('rCliGST'),clientPAN:v('rCliPAN'),
-    requestDate:dt,amount:+amt,gstRate,gstAmt,totalAmt,hsn:v('rHSN'),purpose:pur};
+    requestDate:dt,amount:+amt,gstRate,gstAmt,totalAmt,hsn:v('rHSN'),purpose:pur,
+    byName:byName};
   showLoading('Submitting bill request…');
   if(GAS_OK){
     const res=await gasCall('saveRequest',payload);
@@ -1811,7 +1847,7 @@ function dPI(){
     <span style="font-size:13px;color:var(--orange);font-weight:700">&#9776; ${rows.filter(r=>!r.piNumber).length} pending | 📄 ${rows.filter(r=>r.piNumber&&!r.isFinalPI).length} draft | ✅ ${rows.filter(r=>r.isFinalPI).length} final</span>
   </div>
   <div class="tw"><table><tr><th>Request ID</th><th>Client</th><th>Email</th><th>Amount</th><th>PI No</th><th>PI Status</th><th>By</th><th>Date</th><th>Action</th></tr>`;
-  if(!pg.length)h+=`<tr><td colspan="8"><div class="empty"><div class="empty-ic">&#10003;</div><p style="color:var(--t3);font-size:14px">All up to date</p></div></td></tr>`;
+  if(!pg.length)h+=`<tr><td colspan="9"><div class="empty"><div class="empty-ic">&#10003;</div><p style="color:var(--t3);font-size:14px">All up to date</p></div></td></tr>`;
   pg.forEach(r=>{
     const piSt=r.isFinalPI||r.status==='Final PI'?'<span class="bdg bDone">&#10003; Final</span>':r.piNumber?'<span class="bdg bPI">Draft</span>':'<span class="bdg bPend">Pending</span>';
     h+=`<tr><td><strong style="color:var(--accent)">${esc(r.id)}</strong></td><td>${esc(r.clientName)}</td>
@@ -1828,21 +1864,33 @@ function dPI(){
 function pipg(p){piP=p;dPI()}
 function piForm(reqId){
   const r=REQUESTS.find(x=>x.id===reqId);if(!r)return;
+  // Once an invoice has been raised against this request, the PI is locked —
+  // editing it further (or un-finalising it) after billing has happened
+  // would desync the PI PDF/emails already sent from the invoice on file.
+  if(r.tallyInv){toast('Invoice already issued for this request — the PI can no longer be edited','e');return;}
+  const isEdit=!!r.piNumber;
   const yr=new Date().getFullYear();
-  const piSuggest='PI-'+yr+'-'+String(REQUESTS.filter(x=>x.piNumber).length+1).padStart(3,'0');
-  openM(`Create PI — ${reqId}`,`
+  const piSuggest=r.piNumber||('PI-'+yr+'-'+String(REQUESTS.filter(x=>x.piNumber).length+1).padStart(3,'0'));
+  openM(`${isEdit?'Edit':'Create'} PI — ${reqId}`,`
   <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:14px;margin-bottom:15px;font-size:14px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
     <div><span style="color:var(--t3);font-size:11px;font-weight:700;display:block;text-transform:uppercase;letter-spacing:.05em">CLIENT</span><strong>${esc(r.clientName)}</strong></div>
     <div><span style="color:var(--t3);font-size:11px;font-weight:700;display:block;text-transform:uppercase;letter-spacing:.05em">REQ AMOUNT</span><strong>${fmt(r.amount)}</strong></div>
     <div><span style="color:var(--t3);font-size:11px;font-weight:700;display:block;text-transform:uppercase;letter-spacing:.05em">PURPOSE</span><strong>${esc((r.purpose||'').substring(0,30))}</strong></div>
   </div>
   <div class="fg">
-    <div class="ff"><label>PI Number *</label><input id="pNum" value="${piSuggest}" placeholder="PI-2025-001"></div>
-    <div class="ff"><label>PI Date *</label><input id="pDate" type="date" value="${tod()}"></div>
-    <div class="ff"><label>Valid Until</label><input id="pValid" type="date" value="${new Date(Date.now()+30*86400000).toISOString().split('T')[0]}"></div>
+    <div class="ff"><label>PI Number *</label><input id="pNum" value="${esc(piSuggest)}" placeholder="PI-2025-001"></div>
+    <div class="ff"><label>PI Date *</label><input id="pDate" type="date" value="${r.piDate||tod()}"></div>
+    <div class="ff"><label>Valid Until</label><input id="pValid" type="date" value="${r.piValidUntil||new Date(Date.now()+30*86400000).toISOString().split('T')[0]}"></div>
     <div class="ff"><label>GST Rate</label><select id="pGSTRate"><option value="18" ${(r.gstRate||18)==18?'selected':''}>18%</option><option value="12" ${r.gstRate==12?'selected':''}>12%</option><option value="9" ${r.gstRate==9?'selected':''}>9%</option><option value="5" ${r.gstRate==5?'selected':''}>5%</option><option value="0" ${r.gstRate==0?'selected':''}>0%</option></select></div>
-    <div class="ff"><label>Mark as Final PI?</label><select id="pFinal"><option value="no">No — Draft PI</option><option value="yes">Yes — Final PI</option></select></div>
-    <div class="ff"><label>Notes / Terms</label><input id="pNotes" placeholder="e.g. Payment due within 30 days"></div>
+    <div class="ff"><label>Mark as Final PI?</label><select id="pFinal"><option value="no" ${!r.isFinalPI?'selected':''}>No — Draft PI</option><option value="yes" ${r.isFinalPI?'selected':''}>Yes — Final PI</option></select></div>
+    <div class="ff"><label>Notes / Terms</label><input id="pNotes" value="${esc(r.piNotes||'')}" placeholder="e.g. Payment due within 30 days"></div>
+  </div>
+  <div class="ff s2" style="margin-top:4px">
+    <label style="display:flex;align-items:center;gap:8px;text-transform:none;font-weight:600;color:var(--t2)">
+      <input type="checkbox" id="pNotify" style="width:auto" ${isEdit?'':'checked'}>
+      Send email notification to client &amp; requester
+    </label>
+    ${isEdit?'<span style="font-size:11px;color:var(--t3)">Off by default when editing an existing PI, so minor corrections don\'t re-email the client. Tick this if the changes need to be re-communicated.</span>':''}
   </div>
   <div style="margin-top:13px;padding:11px;background:#fff7ed;border:1px solid #fed7aa;border-radius:9px;font-size:13px;color:var(--amber)">
     💡 PI PDF will be auto-generated — no upload needed. You can also upload a custom PI below.
@@ -1950,27 +1998,37 @@ function buildPIPDF(r,piNum,piDate,validUntil,gstRate,gstAmt,total,notes,isFinal
 }
 async function savePI(reqId){
   const num=v('pNum'),dt=v('pDate'),gstRate=+v('pGSTRate')||18,notes=v('pNotes'),isFinal=v('pFinal')==='yes';
+  const notifyEl=document.getElementById('pNotify'),notify=notifyEl?notifyEl.checked:true;
   if(!num||!dt){toast('PI number and date required','e');return}
-  const fi=document.getElementById('pFile');let fd2=null;
-  if(fi.files.length){try{fd2=await fileToB64(fi.files[0])}catch{toast('File error','e');return}}
   const r=REQUESTS.find(x=>x.id===reqId);if(!r)return;
+  // Guard against silently un-finalising a PI the client may already have
+  // been told is final — this used to be possible with zero warning.
+  if(r.isFinalPI&&!isFinal){
+    if(!confirm(`"${r.piNumber}" is already marked Final. Reverting it to Draft won't un-send the earlier "Final PI" email — continue?`))return;
+  }
+  const fi=document.getElementById('pFile');let fd2=null;
+  if(fi.files.length){
+    if(!checkFileSize(fi.files[0]))return;
+    try{fd2=await fileToB64(fi.files[0])}catch{toast('File error','e');return}
+  }
   const base=r.amount||0,gstAmt=base*gstRate/100,total=base+gstAmt;
   if(GAS_OK){
-    showLoading('Creating PI…');
-    const res=await gasCall('createPI',{reqId,piNumber:num,piDate:dt,validUntil:v('pValid'),gstRate,gstAmt,total,notes,isFinal,
+    showLoading('Saving PI…');
+    const res=await gasCall('createPI',{reqId,piNumber:num,piDate:dt,validUntil:v('pValid'),gstRate,gstAmt,total,notes,isFinal,notify,
       fileData:fd2||'',fileName:fi.files.length?fi.files[0].name:''});
     hideLoading();
     if(!res.success){toast(res.error||'Failed','e');return}
   }
+  const wasEdit=!!r.piNumber;
   const idx=REQUESTS.findIndex(x=>x.id===reqId);
   if(idx>=0){
     REQUESTS[idx]={...REQUESTS[idx],piNumber:num,piDate:dt,piValidUntil:v('pValid'),piNotes:notes,
       gstRate,gstAmt,totalAmt:total,piFile:fd2,isFinalPI:isFinal,
       status:isFinal?'Final PI':'PI Created'};
-    REQUESTS[idx].statusHistory.push({status:isFinal?'Final PI':'PI Created',by:SES.user.name,at:new Date().toISOString(),note:`PI ${num}`});
+    REQUESTS[idx].statusHistory.push({status:isFinal?'Final PI':'PI Created',by:SES.user.name,at:new Date().toISOString(),note:`PI ${num}${notify?'':' (no email sent)'}`});
   }
   sReq();closeM();
-  toast(`PI ${num} ${isFinal?'finalised':'created'}! ✅`,'s');
+  toast(`PI ${num} ${wasEdit?'updated':(isFinal?'finalised':'created')}! ✅${notify?'':' (no email sent)'}`,'s');
   // Auto open PDF
   if(isFinal){
     setTimeout(()=>{
@@ -2055,7 +2113,10 @@ async function saveInv(reqId){
   const co=v('iCo'),tally=v('iTally'),dt=v('iDate'),amt=v('iAmt');
   if(!co||!tally||!dt||!amt){toast('Fill all fields','e');return}
   const fi=document.getElementById('iFile');let fd3=null;
-  if(fi.files.length){try{fd3=await fileToB64(fi.files[0])}catch{toast('File error','e');return}}
+  if(fi.files.length){
+    if(!checkFileSize(fi.files[0]))return;
+    try{fd3=await fileToB64(fi.files[0])}catch{toast('File error','e');return}
+  }
   if(GAS_OK){
     showLoading('Uploading invoice…');
     const res=await gasCall('uploadInvoice',{reqId,company:co,tallyInv:tally,invoiceDate:dt,amountGST:+amt,
