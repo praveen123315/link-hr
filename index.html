@@ -326,7 +326,6 @@ span[style*="color:rgba(255,193,7"]{color:var(--amber)!important}
         <div class="ff"><label>Contact Person Name *</label><input id="peContact" placeholder="Full name"></div>
         <div class="ff"><label>Mobile Number *</label><input id="peMobile" placeholder="+91 XXXXX XXXXX" maxlength="15"></div>
         <div class="ff s2"><label>E-mail ID *</label><input id="peEmail" type="email" placeholder="email@company.com"></div>
-        <div class="ff s2"><label>Requirement / Message</label><textarea id="peReq" placeholder="Describe your requirement in detail…"></textarea></div>
       </div>
       <div style="margin-top:20px;display:flex;justify-content:flex-end;gap:10px">
         <button class="btn badd" onclick="submitPubEnq()">🚀 Submit Enquiry</button>
@@ -353,13 +352,6 @@ span[style*="color:rgba(255,193,7"]{color:var(--amber)!important}
         <div class="ff"><label>GST Certificate Number</label><input id="pcGST" placeholder="15-digit GSTIN" maxlength="15"></div>
         <div class="ff"><label>Company PAN Number</label><input id="pcPAN" placeholder="10-digit PAN" maxlength="10"></div>
         <div class="ff s2"><label>Registered Address</label><textarea id="pcAddr" placeholder="Full address…" style="min-height:60px"></textarea></div>
-      </div>
-      <div class="fsec">Service Requirements</div>
-      <div class="srv-chk">
-        <label><input type="checkbox" value="HR Implementation" onchange="toggleChk(this)"> HR Implementation</label>
-        <label><input type="checkbox" value="Recruitment" onchange="toggleChk(this)"> Recruitment</label>
-        <label><input type="checkbox" value="Payroll Process" onchange="toggleChk(this)"> Payroll Process</label>
-        <label><input type="checkbox" value="Others" onchange="toggleChk(this)"> Others</label>
       </div>
       <div style="margin-top:22px;display:flex;justify-content:flex-end;gap:10px">
         <button class="btn badd" onclick="submitPubCli()">Register as Client</button>
@@ -492,57 +484,98 @@ function mapRequests(data){
 // ════════════════════════════════════
 //  GAS API BRIDGE
 // ════════════════════════════════════
-let _reloginInFlight = null;   // dedupe concurrent re-login attempts
+let _reloginWait = null;       // shared backoff before retry (NOT a shared result — each call retries its own request)
 let _sessionDead = false;      // stop hammering the server once we know we're logged out
+let _navAbort = null;          // AbortController for the current page; go() replaces this on every navigation
 
 async function gasCall(action, data={}) {
   if (!GAS_OK) return { success: false, error: 'GAS not connected' };
   if (_sessionDead) return { success: false, error: 'Session expired' };
+  // Only page-load reads (getX) are cancellable on navigation. Write
+  // actions (saveX/createX/updateX/deleteX/uploadX/etc.) must always run
+  // to completion even if the user clicks to a different page mid-save —
+  // otherwise a save could silently get cancelled and the user would lose
+  // their change with no warning.
+  const mySignal = (action.indexOf('get') === 0 && _navAbort) ? _navAbort.signal : undefined;
   try {
     const body = { action, ...data };
     if (SES && SES.token) body.token = SES.token;
     const r = await fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
+      signal: mySignal
     });
     const text = await r.text();
     let json;
     try { json = JSON.parse(text); }
     catch(e) {
-      console.error('GAS non-JSON:', text);
-      return { success: false, error: 'GAS error: ' + text.substring(0,120) };
+      // The Apps Script backend always returns JSON (even on internal
+      // errors — see _handle()'s try/catch). Getting HTML back here means
+      // the request never reached our script at all — Google intercepted
+      // it, almost always because the signed-in Google account on this
+      // device/browser isn't authorised for the Apps Script deployment
+      // (e.g. deployment access is restricted, or this browser isn't
+      // signed into a permitted Google account). Never show the raw HTML
+      // to the user — just a clear, actionable message. Full text still
+      // goes to the console for admins/debugging.
+      console.error('GAS non-JSON response (likely a Google auth/deployment-access wall):', text);
+      return { success: false, error: 'Could not reach the server. This usually means the Google account signed in on this device/browser isn\'t authorised for this app — please check with your admin that the deployment is shared correctly, then reload and try again.' };
     }
-    // Auto re-login if session expired (deduped across parallel calls)
-    if (!json.success && json.error &&
-        (json.error.includes('Session expired') || json.error.includes('Unauthorised') || json.error.includes('Unauthorized'))) {
-      if (!_reloginInFlight) {
-        console.warn('Session expired — attempting auto re-login…');
-        _reloginInFlight = _relogin().finally(()=>{_reloginInFlight=null});
-      }
-      const relogged = await _reloginInFlight;
-      if (relogged) {
-        // Retry the original call with new token
-        body.token = SES.token;
-        const r2 = await fetch(API_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify(body)
-        });
-        try { return JSON.parse(await r2.text()); }
-        catch(e) { return { success: false, error: 'Retry failed' }; }
-      } else {
-        // Re-login failed — send to login screen once, not once per call
-        if (!_sessionDead) {
-          _sessionDead = true;
-          toast('Session expired. Please login again.','w');
-          setTimeout(doLogout, 1500);
+    // Auto re-login if session expired. Match the EXACT string the backend
+    // sends for a real expiry — not a loose .includes() on fragments like
+    // "Unauthorized", which could in principle appear inside an unrelated
+    // error and would wrongly trigger a full logout.
+    if (!json.success && json.error === 'Session expired. Please login again.') {
+      // Before giving up: retry THIS SAME request (own body, own token) up
+      // to twice, with increasing backoff. Google Sheets can lag a moment
+      // before a just-written session row is visible to a near-simultaneous
+      // request — and switching pages quickly means several of these land
+      // on the backend close together, which is exactly when the lag (or a
+      // transient Apps Script hiccup under that concurrent load) is most
+      // likely. A single 700ms retry wasn't always enough headroom; this
+      // gives it two tries before concluding the session is genuinely gone.
+      //
+      // Only the WAIT is shared across parallel calls (so several
+      // simultaneous calls don't all hammer the server with retries at
+      // once) — the retry fetch itself always uses THIS call's own body
+      // and only affects THIS call's own result.
+      const delays = [700, 1500];
+      for (let i = 0; i < delays.length; i++) {
+        if (!_reloginWait) {
+          _reloginWait = new Promise(res => setTimeout(res, delays[i]))
+            .finally(() => { _reloginWait = null; });
         }
-        return { success: false, error: 'Session expired' };
+        await _reloginWait;
+        try {
+          const rRetry = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify(body),
+            signal: mySignal
+          });
+          const jRetry = JSON.parse(await rRetry.text());
+          if (jRetry.success) return jRetry;
+          if (jRetry.error !== 'Session expired. Please login again.') return jRetry; // a different, non-auth error — surface it as-is, don't treat as expiry
+        } catch(e) {
+          if (e.name === 'AbortError') return { success: false, error: 'Cancelled', aborted: true };
+          // network hiccup on the retry — fall through and try again / give up below
+        }
       }
+      // Genuinely expired/invalid (for THIS call) after every retry — send
+      // to login screen once, not once per call.
+      if (!_sessionDead) {
+        _sessionDead = true;
+        toast('Session expired. Please login again.','w');
+        setTimeout(doLogout, 1500);
+      }
+      return { success: false, error: 'Session expired' };
     }
     return json;
   } catch(e) {
+    // Navigating away mid-request aborts the fetch on purpose (see go()) —
+    // this is expected and harmless, not a real error, so don't log/toast it.
+    if (e.name === 'AbortError') return { success: false, error: 'Cancelled', aborted: true };
     console.error('GAS fetch error:', e);
     return { success: false, error: e.message };
   }
@@ -551,9 +584,9 @@ async function gasCall(action, data={}) {
 // ── Silent re-login is intentionally NOT supported. Caching the plaintext
 // password in sessionStorage to allow this was a security hole (any XSS or
 // shared-machine access could read it back out). Sessions already last 24h
-// server-side, so on real expiry we just send the user back to the login
-// screen via gasCall()'s existing "Session expired" handling.
-async function _relogin() { return false; }
+// server-side; gasCall() retries a transient "Session expired" once with the
+// SAME token (see above — guards against Sheets read-lag), and only on a
+// genuine expiry does it send the user back to the login screen.
 
 // ── Debug: test GAS connection ──
 async function testGAS(){
@@ -684,8 +717,13 @@ function xls(data,name){
 }
 function prevFile(inp,prevId){
   const el=document.getElementById(prevId);if(!el||!inp.files.length)return;
-  const f=inp.files[0];
-  el.innerHTML=`<div class="fprev">📎 <strong>${esc(f.name)}</strong> <span style="color:var(--t3)">(${(f.size/1024).toFixed(1)}KB)</span></div>`;
+  if(inp.files.length===1){
+    const f=inp.files[0];
+    el.innerHTML=`<div class="fprev">📎 <strong>${esc(f.name)}</strong> <span style="color:var(--t3)">(${(f.size/1024).toFixed(1)}KB)</span></div>`;
+  }else{
+    const names=[...inp.files].map(f=>`📎 <strong>${esc(f.name)}</strong> <span style="color:var(--t3)">(${(f.size/1024).toFixed(1)}KB)</span>`).join('<br>');
+    el.innerHTML=`<div class="fprev">${inp.files.length} files selected:<br>${names}</div>`;
+  }
 }
 function toggleChk(cb){cb.closest('label').classList.toggle('checked',cb.checked)}
 
@@ -824,10 +862,10 @@ window.addEventListener('DOMContentLoaded',()=>{
 function showPubEnq(){
   document.getElementById('loginWrap').style.display='none';
   document.getElementById('pubEnqWrap').style.display='flex';
-  draftAttach('enquiry',['peOption','peCompany','peContact','peMobile','peEmail','peReq']);
+  draftAttach('enquiry',['peOption','peCompany','peContact','peMobile','peEmail']);
 }
 async function submitPubEnq(){
-  const opt=v('peOption'),company=v('peCompany'),contact=v('peContact'),mobile=v('peMobile'),email=v('peEmail'),req=v('peReq');
+  const opt=v('peOption'),company=v('peCompany'),contact=v('peContact'),mobile=v('peMobile'),email=v('peEmail'),req='';
   if(!opt||!company||!contact||!mobile||!email){toast('Fill all required fields','e');return}
   const submitBtn=[...document.querySelectorAll('#pubEnqWrap button')].find(b=>/Submit Enquiry/i.test(b.textContent));
   let restoreBtn=null;
@@ -874,7 +912,7 @@ async function submitPubEnq(){
 function showPubCli(){
   document.getElementById('loginWrap').style.display='none';
   document.getElementById('pubCliWrap').style.display='flex';
-  draftAttach('client',['pcCompany','pcContact','pcMobile','pcEmail','pcGST','pcPAN','pcAddr'],'#pubCliWrap .srv-chk input');
+  draftAttach('client',['pcCompany','pcContact','pcMobile','pcEmail','pcGST','pcPAN','pcAddr']);
 }
 async function submitPubCli(){
   const company=v('pcCompany'),contact=v('pcContact'),mobile=v('pcMobile'),email=v('pcEmail');
@@ -882,7 +920,9 @@ async function submitPubCli(){
   if(CLIENTS.find(c=>c.email===email||c.mobile===mobile)){
     toast('Client already exists with this email or mobile','e');return;
   }
-  const services=[...document.querySelectorAll('#pubCliWrap .srv-chk input:checked')].map(x=>x.value);
+  // Service Requirements checkboxes were removed from the public client
+  // registration form — kept as an empty array for backend compatibility.
+  const services=[];
   const submitBtn=[...document.querySelectorAll('#pubCliWrap button')].find(b=>/Register|Submit/i.test(b.textContent));
   let restoreBtn=null;
   if(submitBtn){
@@ -1025,13 +1065,13 @@ async function bootApp(){
       ]);
       if(eRes.success){
         ENQUIRIES=mapEnquiries(eRes.data);
-      } else {
+      } else if(!eRes.aborted){
         console.error('getEnquiries failed:',eRes.error);
         toast('Enquiries load error: '+eRes.error,'e');
       }
       if(cRes.success){
         CLIENTS=mapClients(cRes.data);
-      } else {
+      } else if(!cRes.aborted){
         console.error('getClients failed:',cRes.error);
         toast('Clients load error: '+cRes.error,'e');
       }
@@ -1063,6 +1103,18 @@ const PFNS={dash:rDash,enq:rEnq,clients:rClients,myreq:rMyReq,newreq:rNewReq,all
 
 function go(p){
   if(!SES)return;
+  // Cancel whatever the previous page was still loading. Without this,
+  // clicking through pages quickly fires a new getX call on every click
+  // while the old ones keep running in the background — several of these
+  // land on the Apps Script backend at once, which is what was causing the
+  // "session expired" / "data loading error" combo under fast navigation
+  // (the backend gets overloaded by concurrent full-sheet reads, one of
+  // them times out or errors, and that single hiccup was cascading into a
+  // full logout — see gasCall above). Aborting the stale request as soon
+  // as we navigate away means only the page you're actually looking at is
+  // still asking the server for anything.
+  if(_navAbort) _navAbort.abort();
+  _navAbort = new AbortController();
   CUR_PAGE=p;
   document.querySelectorAll('.ni').forEach(e=>e.classList.toggle('active',e.dataset.p===p));
   document.getElementById('tbTitle').textContent=PTITLES[p]||p;
@@ -1139,6 +1191,7 @@ async function rEnq(){
   if(GAS_OK){
     try{
       const res=await gasCall('getEnquiries',{});
+      if(res.aborted)return; // superseded by a newer request for this same page — nothing to show
       if(!stillOn('enq'))return; // user already navigated away — discard this response
       if(res.success){
         ENQUIRIES=mapEnquiries(res.data);
@@ -1214,14 +1267,15 @@ function enqForm(id=''){
     <div class="ff"><label>Company Name *</label><input id="eCo" value="${esc(r.company||'')}"></div>
     <div class="ff"><label>Contact Person *</label><input id="eCt" value="${esc(r.contact||'')}"></div>
     <div class="ff"><label>Mobile Number *</label><input id="eMb" value="${esc(r.mobile||'')}" maxlength="15"></div>
-    <div class="ff"><label>E-mail ID *</label><input id="eEm" type="email" value="${esc(r.email||'')}"></div>
+    <div class="ff"><label>E-mail ID</label><input id="eEm" type="email" value="${esc(r.email||'')}" placeholder="Optional"></div>
     <div class="ff s2"><label>Requirement</label><textarea id="eRq">${esc(r.requirement||'')}</textarea></div>
   </div>`,
   `<button class="btn bout" onclick="closeM()">Cancel</button><button class="btn badd" onclick="saveEnq('${id}')">Save Enquiry</button>`);
 }
 async function saveEnq(id){
   const opt=v('eOpt'),co=v('eCo'),ct=v('eCt'),mb=v('eMb'),em=v('eEm'),st=v('eStat'),rq=v('eRq');
-  if(!opt||!co||!ct||!mb||!em){toast('Fill required fields','e');return}
+  if(!opt||!co||!ct||!mb){toast('Fill required fields','e');return}
+  if(em&&!/^\S+@\S+\.\S+$/.test(em)){toast('Enter a valid email address','e');return}
   if(GAS_OK){
     const payload={option:opt,company:co,contact:ct,mobile:mb,email:em,status:st,requirement:rq};
     if(id) payload.id=id;
@@ -1337,6 +1391,7 @@ async function rClients(){
   if(GAS_OK){
     try{
       const res=await gasCall('getClients',{});
+      if(res.aborted)return; // superseded by a newer request for this same page — nothing to show
       if(!stillOn('clients'))return;
       if(res.success){
         CLIENTS=mapClients(res.data);
@@ -1726,7 +1781,21 @@ function exportMyReq(){
   xls(rows2xls(rows),'my_requests');
 }
 function rows2xls(rows){return rows.map(r=>({'Request ID':r.id,'Client':r.clientName,'Email':r.clientMail,'Amount':r.amount,'Date':r.requestDate,'By':r.byName,'Dept':r.dept,'Status':r.status,'PI No':r.piNumber||'','Tally Invoice':r.tallyInv||''}))}
-function dlFile(id,type){const r=REQUESTS.find(x=>x.id===id);if(!r)return;const f=type==='pi'?r.piFile:r.invoiceFile;if(!f){toast('File not available','w');return}const a=document.createElement('a');a.href=f;a.download=(type==='pi'?'PI_':'Invoice_')+id;a.click()}
+function dlFile(id,type){
+  const r=REQUESTS.find(x=>x.id===id);if(!r)return;
+  const f=type==='pi'?r.piFile:r.invoiceFile;
+  if(!f){toast('File not available','w');return}
+  // These are Google Drive "view" links (cross-origin), so the `download`
+  // attribute is silently ignored by the browser, and — because the app
+  // itself runs inside Apps Script's sandboxed iframe — a same-tab
+  // navigation via a plain a.click() gets swallowed by the iframe sandbox
+  // entirely (no allow-top-navigation), which is what made these buttons
+  // look "frozen" with nothing happening. window.open(...,'_blank') is
+  // explicitly permitted by the sandbox (allow-popups) and actually opens
+  // the file.
+  const w=window.open(f,'_blank','noopener');
+  if(!w){toast('Pop-up blocked — please allow pop-ups for this site to download files','w');}
+}
 
 // ALL REQUESTS
 let aP=1,aSr='',aSt='',aDept='',aDF='',aSO='date_desc';
@@ -1800,13 +1869,13 @@ function viewReq(id){
   if(r.piNumber){body+=`<div class="fsec">PI Details</div>
   <div class="ig"><div class="ii"><label>PI Number</label><span style="color:var(--accent);font-weight:700">${esc(r.piNumber)}</span></div>
   <div class="ii"><label>PI Date</label><span>${fd(r.piDate)}</span></div></div>
-  ${r.piFile?`<div class="fprev">📄 <a href="${r.piFile}" download="PI_${r.id}" style="color:var(--primary)">Download PI Document</a></div>`:''}`;}
+  ${r.piFile?`<div class="fprev">📄 <a href="${r.piFile}" target="_blank" rel="noopener" style="color:var(--primary)">Download PI Document</a></div>`:''}`;}
   if(r.tallyInv){body+=`<div class="fsec">Invoice Details</div>
   <div class="ig"><div class="ii"><label>Company</label><span>${esc(r.invoiceCompany)}</span></div>
   <div class="ii"><label>Tally Invoice</label><span style="font-weight:700">${esc(r.tallyInv)}</span></div>
   <div class="ii"><label>Amount (GST)</label><span class="amt" style="color:var(--green)">${fmt(r.invoiceAmt)}</span></div>
   <div class="ii"><label>Invoice Date</label><span>${fd(r.invoiceDate)}</span></div></div>
-  ${r.invoiceFile?`<div class="fprev">🧾 <a href="${r.invoiceFile}" download="Invoice_${r.id}">Download Final Invoice</a></div>`:''}`;}
+  ${r.invoiceFile?`<div class="fprev">🧾 <a href="${r.invoiceFile}" target="_blank" rel="noopener">Download Final Invoice</a></div>`:''}`;}
   body+=`<div class="fsec">Status &amp; Communication History</div><div class="tl">
   ${(r.statusHistory||[]).length?r.statusHistory.map(h=>`<div class="tli"><div class="tld done">✅</div><div class="tli-i"><strong>${esc(h.status)}</strong><span>${h.at?new Date(h.at).toLocaleString('en-IN'):'—'} • ${esc(h.by||'—')}</span>${h.note?`<div style="font-size:12px;color:var(--t3);margin-top:2px">${esc(h.note)}</div>`:''}</div></div>`).join(''):'<div style="font-size:12px;color:var(--t3);padding:6px 0">No history yet</div>'}</div>`;
   let foot=`<button class="btn bout" onclick="closeM()">Close</button>`;
@@ -1912,7 +1981,8 @@ function previewPI(reqId){
   const r=REQUESTS.find(x=>x.id===reqId);if(!r)return;
   const num=v('pNum'),dt=v('pDate'),valid=v('pValid'),gstRate=+v('pGSTRate')||18,notes=v('pNotes');
   const base=r.amount||0,gstAmt=base*gstRate/100,total=base+gstAmt;
-  const w=window.open('','_blank','width=800,height:600');
+  const w=window.open('','_blank','width=800,height=600');
+  if(!w){toast('Pop-up blocked — please allow pop-ups for this site to preview the PI','w');return}
   w.document.write(buildPIPDF(r,num,dt,valid,gstRate,gstAmt,total,notes,false));
   w.document.close();
 }
@@ -2029,15 +2099,25 @@ async function savePI(reqId){
   }
   sReq();closeM();
   toast(`PI ${num} ${wasEdit?'updated':(isFinal?'finalised':'created')}! ✅${notify?'':' (no email sent)'}`,'s');
-  // Auto open PDF
+  // Auto open PDF. The blank window is opened HERE, synchronously, while
+  // we're still inside the click's event handler — browsers require
+  // window.open to be tied directly to a user gesture, and a call made
+  // later from inside setTimeout() breaks that chain and gets silently
+  // blocked (the old code then crashed on w.document.write against a null
+  // window, which is what made "Save PI" look like it froze). We keep the
+  // window handle and only fill it in once the request re-fetch settles.
   if(isFinal){
-    setTimeout(()=>{
-      const rr=REQUESTS.find(x=>x.id===reqId);
-      const gA=rr.gstAmt||0,tot=rr.totalAmt||0;
-      const w=window.open('','_blank');
-      w.document.write(buildPIPDF(rr,num,dt,v('pValid'),gstRate,gA,tot,notes,true));
-      w.document.close();
-    },400);
+    const w=window.open('','_blank');
+    if(!w){
+      toast('Pop-up blocked — allow pop-ups for this site to auto-open the PI PDF','w');
+    } else {
+      setTimeout(()=>{
+        const rr=REQUESTS.find(x=>x.id===reqId);
+        const gA=rr.gstAmt||0,tot=rr.totalAmt||0;
+        w.document.write(buildPIPDF(rr,num,dt,v('pValid'),gstRate,gA,tot,notes,true));
+        w.document.close();
+      },400);
+    }
   }
   rPI();
 }
@@ -2106,6 +2186,13 @@ async function invForm(reqId){
         <input type="file" id="iFile" accept=".pdf,.jpg,.jpeg,.png" onchange="prevFile(this,'iPrev')">
       </div><div id="iPrev"></div>
     </div>
+    <div class="ff s2">
+      <label>Additional Documents (optional)</label>
+      <div class="ubox" onclick="document.getElementById('iExtraFiles').click()">
+        <div class="ubox-ic">📎</div><div class="ubox-t">Click to attach extra files</div><div class="ubox-s">Any supporting docs — auto-emailed to the client with the invoice</div>
+        <input type="file" id="iExtraFiles" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" onchange="prevFile(this,'iExtraPrev')">
+      </div><div id="iExtraPrev"></div>
+    </div>
   </div>`,
   `<button class="btn bout" onclick="closeM()">Cancel</button><button class="btn badd" onclick="saveInv('${reqId}')">Mark Complete</button>`,'lg');
 }
@@ -2117,10 +2204,22 @@ async function saveInv(reqId){
     if(!checkFileSize(fi.files[0]))return;
     try{fd3=await fileToB64(fi.files[0])}catch{toast('File error','e');return}
   }
+  // Additional documents (optional) — each converted to base64 and sent
+  // alongside the main invoice; the backend auto-attaches all of them to
+  // the invoice email sent to the client/requester.
+  const fiExtra=document.getElementById('iExtraFiles');
+  const extraFiles=[];
+  if(fiExtra&&fiExtra.files.length){
+    for(const f of fiExtra.files){
+      if(!checkFileSize(f))return;
+      try{extraFiles.push({fileData:await fileToB64(f),fileName:f.name})}
+      catch{toast('File error','e');return}
+    }
+  }
   if(GAS_OK){
     showLoading('Uploading invoice…');
     const res=await gasCall('uploadInvoice',{reqId,company:co,tallyInv:tally,invoiceDate:dt,amountGST:+amt,
-      fileData:fd3||'',fileName:fi.files.length?fi.files[0].name:''});
+      fileData:fd3||'',fileName:fi.files.length?fi.files[0].name:'',extraFiles});
     hideLoading();
     if(!res.success){toast(res.error||'Failed','e');return}
   }
@@ -2199,6 +2298,11 @@ function downloadPIPDF(reqId,isFinal){
   const r=REQUESTS.find(x=>x.id===reqId);if(!r||!r.piNumber){toast('No PI found','w');return}
   const gstRate=r.gstRate||18,base=r.amount||0,gstAmt=r.gstAmt||(base*gstRate/100),total=r.totalAmt||(base+gstAmt);
   const w=window.open('','_blank','width=800,height=600');
+  // If the popup was blocked, window.open returns null — writing to
+  // w.document below would then throw and silently kill the click handler,
+  // which is what made this look like a freeze. Bail out with a clear
+  // message instead.
+  if(!w){toast('Pop-up blocked — please allow pop-ups for this site to view/print the PI','w');return}
   w.document.write(buildPIPDF(r,r.piNumber,r.piDate,r.piValidUntil||'',gstRate,gstAmt,total,r.piNotes||'',isFinal||r.isFinalPI||false));
   w.document.close();
 }
@@ -2321,7 +2425,7 @@ async function loadUsers(){
       dept:(u.Dept||'').split(',').map(s=>s.trim()).filter(Boolean),email:u.Email,
       empId:u.EmpID||'',designation:u.Designation||'',mobile:u.Mobile||'',doj:u.DOJ||'',
       createdAt:u.CreatedAt||''}));
-  } else {
+  } else if(!res.aborted){
     toast('Failed to load users: '+(res.error||''),'e');
   }
   return USERS;
