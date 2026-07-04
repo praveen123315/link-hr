@@ -325,7 +325,7 @@ span[style*="color:rgba(255,193,7"]{color:var(--amber)!important}
         <div class="ff"><label>Company Name *</label><input id="peCompany" placeholder="Your company name"></div>
         <div class="ff"><label>Contact Person Name *</label><input id="peContact" placeholder="Full name"></div>
         <div class="ff"><label>Mobile Number *</label><input id="peMobile" placeholder="+91 XXXXX XXXXX" maxlength="15"></div>
-        <div class="ff s2"><label>E-mail ID *</label><input id="peEmail" type="email" placeholder="email@company.com"></div>
+        <div class="ff s2"><label>E-mail ID</label><input id="peEmail" type="email" placeholder="email@company.com"></div>
         <div class="ff s2"><label>Requirement / Message</label><textarea id="peReq" placeholder="Describe your requirement in detail…"></textarea></div>
       </div>
       <div style="margin-top:20px;display:flex;justify-content:flex-end;gap:10px">
@@ -353,13 +353,6 @@ span[style*="color:rgba(255,193,7"]{color:var(--amber)!important}
         <div class="ff"><label>GST Certificate Number</label><input id="pcGST" placeholder="15-digit GSTIN" maxlength="15"></div>
         <div class="ff"><label>Company PAN Number</label><input id="pcPAN" placeholder="10-digit PAN" maxlength="10"></div>
         <div class="ff s2"><label>Registered Address</label><textarea id="pcAddr" placeholder="Full address…" style="min-height:60px"></textarea></div>
-      </div>
-      <div class="fsec">Service Requirements</div>
-      <div class="srv-chk">
-        <label><input type="checkbox" value="HR Implementation" onchange="toggleChk(this)"> HR Implementation</label>
-        <label><input type="checkbox" value="Recruitment" onchange="toggleChk(this)"> Recruitment</label>
-        <label><input type="checkbox" value="Payroll Process" onchange="toggleChk(this)"> Payroll Process</label>
-        <label><input type="checkbox" value="Others" onchange="toggleChk(this)"> Others</label>
       </div>
       <div style="margin-top:22px;display:flex;justify-content:flex-end;gap:10px">
         <button class="btn badd" onclick="submitPubCli()">Register as Client</button>
@@ -495,9 +488,39 @@ function mapRequests(data){
 let _reloginInFlight = null;   // dedupe concurrent re-login attempts
 let _sessionDead = false;      // stop hammering the server once we know we're logged out
 
-async function gasCall(action, data={}) {
+function _sleep(ms){ return new Promise(res=>setTimeout(res, ms)); }
+
+// A non-JSON response (raw "<!DOCTYPE html>...") almost always means Google's
+// own infrastructure returned an error page BEFORE our script ever ran —
+// e.g. too many people hitting the web app at once, a brief platform hiccup,
+// or a cold start. Our own script errors are always caught in _handle() and
+// come back as JSON, so this is never "our" bug — it's transient, and a
+// short retry clears it in the vast majority of cases instead of showing
+// the user a raw error.
+//
+// IMPORTANT: only safe to auto-retry actions where re-sending an identical
+// request can't create a duplicate. A non-JSON/network failure doesn't tell
+// us whether the original request failed before or after it actually wrote
+// to the sheet — the response could have been lost in transit AFTER the
+// write succeeded. For read-only actions that's harmless to repeat. For an
+// action that APPENDS a new row on every call (saveEnquiry create,
+// submitEnquiry, submitClient, saveRequest, convertToClient, saveCompany
+// create) a blind retry could silently create a second enquiry/client/bill
+// request. So only the actions below — reads, plus login/logout/
+// changePassword, which are safe to repeat or already de-duplicated
+// server-side — get the automatic retry. Everything else fails fast and
+// visibly instead, which is far better than a silent duplicate record.
+const GAS_RETRYABLE_ACTIONS = new Set([
+  'bootstrap','getConfig','getEnquiries','getClients','getRequests','getCompanies',
+  'getUsers','getStaffList','getPIQueue','getInvoiceQueue','getReportData','getDashboard',
+  'login','logout','changePassword'
+]);
+const GAS_RETRY_DELAYS = [800, 1800]; // ms — 2 retries total
+
+async function gasCall(action, data={}, _attempt=0) {
   if (!GAS_OK) return { success: false, error: 'GAS not connected' };
   if (_sessionDead) return { success: false, error: 'Session expired' };
+  const canRetry = GAS_RETRYABLE_ACTIONS.has(action);
   try {
     const body = { action, ...data };
     if (SES && SES.token) body.token = SES.token;
@@ -510,8 +533,14 @@ async function gasCall(action, data={}) {
     let json;
     try { json = JSON.parse(text); }
     catch(e) {
-      console.error('GAS non-JSON:', text);
-      return { success: false, error: 'GAS error: ' + text.substring(0,120) };
+      console.warn(`GAS non-JSON response (attempt ${_attempt+1}/${GAS_RETRY_DELAYS.length+1}):`, text.substring(0,200));
+      if (canRetry && _attempt < GAS_RETRY_DELAYS.length) {
+        await _sleep(GAS_RETRY_DELAYS[_attempt]);
+        return gasCall(action, data, _attempt+1);
+      }
+      return { success: false, error: canRetry
+        ? 'Server is busy right now — please try again in a moment.'
+        : 'Server is busy right now — please check whether this went through before retrying.' };
     }
     // Auto re-login if session expired (deduped across parallel calls)
     if (!json.success && json.error &&
@@ -543,7 +572,11 @@ async function gasCall(action, data={}) {
     }
     return json;
   } catch(e) {
-    console.error('GAS fetch error:', e);
+    console.warn(`GAS fetch error (attempt ${_attempt+1}/${GAS_RETRY_DELAYS.length+1}):`, e);
+    if (canRetry && _attempt < GAS_RETRY_DELAYS.length) {
+      await _sleep(GAS_RETRY_DELAYS[_attempt]);
+      return gasCall(action, data, _attempt+1);
+    }
     return { success: false, error: e.message };
   }
 }
@@ -577,6 +610,7 @@ async function testGAS(){
 }
 
 let SES=null;
+let ORG_NAME='Link HR Solution Pvt. Ltd.'; // set from bootstrap's orgName once logged in
 
 // ════════════════════════════════════
 //  LOCAL STORE
@@ -664,6 +698,18 @@ function pager(total,pages,cur,fn){
   return h;
 }
 function fileToB64(f){return new Promise((r,j)=>{const fr=new FileReader();fr.onload=e=>r(e.target.result);fr.onerror=j;fr.readAsDataURL(f)})}
+// window.open() returns null when the browser's popup blocker steps in —
+// most likely for the auto-open-after-finalising-PI case, since that fires
+// from a setTimeout rather than directly inside the click handler, which is
+// exactly what popup blockers key off of. Without this check, a blocked
+// popup threw an uncaught "Cannot read properties of null" with the user
+// never told why nothing opened.
+function openPDFWindow(html){
+  const w=window.open('','_blank','width=800,height=600');
+  if(!w){toast('Pop-up blocked — allow pop-ups for this site, or use the Download PI PDF button','w');return null;}
+  w.document.write(html);w.document.close();
+  return w;
+}
 // Uploads go through GAS as a base64 JSON POST body (~33% larger than the
 // original file) — large files can fail or hang with no clear error, so we
 // cap client-side and tell the user immediately instead of letting a huge
@@ -828,7 +874,7 @@ function showPubEnq(){
 }
 async function submitPubEnq(){
   const opt=v('peOption'),company=v('peCompany'),contact=v('peContact'),mobile=v('peMobile'),email=v('peEmail'),req=v('peReq');
-  if(!opt||!company||!contact||!mobile||!email){toast('Fill all required fields','e');return}
+  if(!opt||!company||!contact||!mobile){toast('Fill all required fields','e');return}
   const submitBtn=[...document.querySelectorAll('#pubEnqWrap button')].find(b=>/Submit Enquiry/i.test(b.textContent));
   let restoreBtn=null;
   if(submitBtn){
@@ -874,7 +920,7 @@ async function submitPubEnq(){
 function showPubCli(){
   document.getElementById('loginWrap').style.display='none';
   document.getElementById('pubCliWrap').style.display='flex';
-  draftAttach('client',['pcCompany','pcContact','pcMobile','pcEmail','pcGST','pcPAN','pcAddr'],'#pubCliWrap .srv-chk input');
+  draftAttach('client',['pcCompany','pcContact','pcMobile','pcEmail','pcGST','pcPAN','pcAddr']);
 }
 async function submitPubCli(){
   const company=v('pcCompany'),contact=v('pcContact'),mobile=v('pcMobile'),email=v('pcEmail');
@@ -882,7 +928,6 @@ async function submitPubCli(){
   if(CLIENTS.find(c=>c.email===email||c.mobile===mobile)){
     toast('Client already exists with this email or mobile','e');return;
   }
-  const services=[...document.querySelectorAll('#pubCliWrap .srv-chk input:checked')].map(x=>x.value);
   const submitBtn=[...document.querySelectorAll('#pubCliWrap button')].find(b=>/Register|Submit/i.test(b.textContent));
   let restoreBtn=null;
   if(submitBtn){
@@ -892,7 +937,7 @@ async function submitPubCli(){
   }
   let id=cid();
   if(GAS_OK){
-    const res=await gasCall('submitClient',{company,contact,mobile,email,gst:v('pcGST'),pan:v('pcPAN'),address:v('pcAddr'),services});
+    const res=await gasCall('submitClient',{company,contact,mobile,email,gst:v('pcGST'),pan:v('pcPAN'),address:v('pcAddr'),services:[]});
     if(res.success) id=res.id;
     else if(res.error){
       toast(res.error,'e');
@@ -902,7 +947,7 @@ async function submitPubCli(){
   }
   draftClear('client');
   CLIENTS.push({id,company,contact,mobile,email,gst:v('pcGST'),pan:v('pcPAN'),address:v('pcAddr'),
-    services,status:'Client Registered',source:'Public Form',
+    services:[],status:'Client Registered',source:'Public Form',
     createdAt:new Date().toISOString(),enquiryId:'',
     statusHistory:[{status:'Client Registered',at:new Date().toISOString(),by:'Public Form'}]});
   sCli();
@@ -922,6 +967,17 @@ async function submitPubCli(){
 async function doLogin(){
   const u=v('lgU'),p=v('lgP');
   if(!u||!p){showErr('lerr','Enter username and password');return}
+  // A prior forced logout (real expiry, or a revoked session) sets
+  // _sessionDead=true so gasCall() stops hammering the server with the
+  // dead token. But gasCall() short-circuits on THAT flag before even
+  // looking at which action is being called — including 'login' itself.
+  // Without this reset, the very next login attempt on the same page
+  // (no full refresh) would never reach the server at all: gasCall would
+  // immediately return {success:false, error:'Session expired'}, which
+  // then rendered here as a bogus "Session expired" LOGIN error even with
+  // fully correct credentials, effectively locking the user out until
+  // they manually reloaded the page.
+  _sessionDead=false;
   const btn=document.getElementById('lgBtn');
   btn.textContent='Signing in…';btn.disabled=true;showLoading('Authenticating…');
   // Try GAS login first
@@ -1017,33 +1073,22 @@ async function bootApp(){
     document.getElementById('pa').innerHTML='<div class="loading"><div class="sp"></div><p>Loading data from server…</p></div>';
     showLoading('Loading data from server…');
     try{
-      const [eRes,cRes,rRes,coRes]=await Promise.all([
-        gasCall('getEnquiries',{}),
-        gasCall('getClients',{}),
-        gasCall('getRequests',{}),
-        gasCall('getCompanies',{})
-      ]);
-      if(eRes.success){
-        ENQUIRIES=mapEnquiries(eRes.data);
+      // Single combined call instead of 4 parallel ones. Firing 4 requests
+      // at once on every login used to quadruple the number of simultaneous
+      // script executions right when multiple people log in together — the
+      // #1 cause of "data can't be loaded" / raw HTML errors under load.
+      // gasCall() already retries transient failures internally, so a
+      // failure here means it genuinely didn't succeed after retries.
+      const res=await gasCall('bootstrap',{});
+      if(res.success){
+        ENQUIRIES=mapEnquiries(res.enquiries);
+        CLIENTS=mapClients(res.clients);
+        REQUESTS=mapRequests(res.requests);
+        COMPANIES=(res.companies||[]).map(c=>({id:c.CoID,name:c.Name,gstin:c.GSTIN,address:c.Address,createdAt:c.CreatedAt||''}));
+        if(res.orgName) ORG_NAME=res.orgName;
       } else {
-        console.error('getEnquiries failed:',eRes.error);
-        toast('Enquiries load error: '+eRes.error,'e');
-      }
-      if(cRes.success){
-        CLIENTS=mapClients(cRes.data);
-      } else {
-        console.error('getClients failed:',cRes.error);
-        toast('Clients load error: '+cRes.error,'e');
-      }
-      if(rRes.success){
-        REQUESTS=mapRequests(rRes.data);
-      } else {
-        console.error('getRequests failed:',rRes.error);
-      }
-      if(coRes.success){
-        COMPANIES=coRes.data.map(c=>({id:c.CoID,name:c.Name,gstin:c.GSTIN,address:c.Address,createdAt:c.CreatedAt||''}));
-      } else {
-        console.error('getCompanies failed:',coRes.error);
+        console.error('bootstrap failed:',res.error);
+        toast('Data load error: '+res.error,'e');
       }
     }catch(e){
       console.error('GAS load error:',e);
@@ -1214,14 +1259,14 @@ function enqForm(id=''){
     <div class="ff"><label>Company Name *</label><input id="eCo" value="${esc(r.company||'')}"></div>
     <div class="ff"><label>Contact Person *</label><input id="eCt" value="${esc(r.contact||'')}"></div>
     <div class="ff"><label>Mobile Number *</label><input id="eMb" value="${esc(r.mobile||'')}" maxlength="15"></div>
-    <div class="ff"><label>E-mail ID *</label><input id="eEm" type="email" value="${esc(r.email||'')}"></div>
+    <div class="ff"><label>E-mail ID</label><input id="eEm" type="email" value="${esc(r.email||'')}"></div>
     <div class="ff s2"><label>Requirement</label><textarea id="eRq">${esc(r.requirement||'')}</textarea></div>
   </div>`,
   `<button class="btn bout" onclick="closeM()">Cancel</button><button class="btn badd" onclick="saveEnq('${id}')">Save Enquiry</button>`);
 }
 async function saveEnq(id){
   const opt=v('eOpt'),co=v('eCo'),ct=v('eCt'),mb=v('eMb'),em=v('eEm'),st=v('eStat'),rq=v('eRq');
-  if(!opt||!co||!ct||!mb||!em){toast('Fill required fields','e');return}
+  if(!opt||!co||!ct||!mb){toast('Fill required fields','e');return}
   if(GAS_OK){
     const payload={option:opt,company:co,contact:ct,mobile:mb,email:em,status:st,requirement:rq};
     if(id) payload.id=id;
@@ -1313,7 +1358,13 @@ async function doConv(enqId){
   const services=[...document.querySelectorAll('#mb .srv-chk input:checked')].map(x=>x.value);
   let id=cid();
   if(GAS_OK){
+    // showLoading blocks the screen (and any impatient second click) while
+    // this is in flight — every other save/convert/delete action does this;
+    // this one was missing it, which left a window for a double-click to
+    // fire convertToClient twice before the button/modal updated.
+    showLoading('Converting to client…');
     const res=await gasCall('convertToClient',{enquiryId:enqId,company:co,contact:ct,mobile:mb,email:em,gst:v('ccGST'),pan:v('ccPAN'),address:v('ccAddr'),services});
+    hideLoading();
     if(!res.success){toast(res.error||'Conversion failed','e');return}
     if(res.clientId) id=res.clientId;
   }
@@ -1912,13 +1963,15 @@ function previewPI(reqId){
   const r=REQUESTS.find(x=>x.id===reqId);if(!r)return;
   const num=v('pNum'),dt=v('pDate'),valid=v('pValid'),gstRate=+v('pGSTRate')||18,notes=v('pNotes');
   const base=r.amount||0,gstAmt=base*gstRate/100,total=base+gstAmt;
-  const w=window.open('','_blank','width=800,height:600');
-  w.document.write(buildPIPDF(r,num,dt,valid,gstRate,gstAmt,total,notes,false));
-  w.document.close();
+  openPDFWindow(buildPIPDF(r,num,dt,valid,gstRate,gstAmt,total,notes,false));
 }
 
 function buildPIPDF(r,piNum,piDate,validUntil,gstRate,gstAmt,total,notes,isFinal){
-  const org=COMPANIES[0]||{name:'Link HR Solution Pvt. Ltd.',gstin:'',address:''};
+  // Match by org name (set from the backend's ORG_NAME at boot) rather than
+  // assuming COMPANIES[0] is always "our" company — that broke the moment
+  // a client company got added/reordered above the seed row, same issue
+  // already fixed server-side for the emailed PI/invoice HTML.
+  const org=COMPANIES.find(c=>c.name===ORG_NAME)||COMPANIES[0]||{name:ORG_NAME,gstin:'',address:''};
   const base=r.amount||0;
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${piNum}</title>
   <style>
@@ -2034,9 +2087,7 @@ async function savePI(reqId){
     setTimeout(()=>{
       const rr=REQUESTS.find(x=>x.id===reqId);
       const gA=rr.gstAmt||0,tot=rr.totalAmt||0;
-      const w=window.open('','_blank');
-      w.document.write(buildPIPDF(rr,num,dt,v('pValid'),gstRate,gA,tot,notes,true));
-      w.document.close();
+      openPDFWindow(buildPIPDF(rr,num,dt,v('pValid'),gstRate,gA,tot,notes,true));
     },400);
   }
   rPI();
@@ -2198,9 +2249,7 @@ function dPayments(){
 function downloadPIPDF(reqId,isFinal){
   const r=REQUESTS.find(x=>x.id===reqId);if(!r||!r.piNumber){toast('No PI found','w');return}
   const gstRate=r.gstRate||18,base=r.amount||0,gstAmt=r.gstAmt||(base*gstRate/100),total=r.totalAmt||(base+gstAmt);
-  const w=window.open('','_blank','width=800,height=600');
-  w.document.write(buildPIPDF(r,r.piNumber,r.piDate,r.piValidUntil||'',gstRate,gstAmt,total,r.piNotes||'',isFinal||r.isFinalPI||false));
-  w.document.close();
+  openPDFWindow(buildPIPDF(r,r.piNumber,r.piDate,r.piValidUntil||'',gstRate,gstAmt,total,r.piNotes||'',isFinal||r.isFinalPI||false));
 }
 
 // ════════════════════════════════════
@@ -2369,7 +2418,7 @@ function uForm(id=''){
     <div class="ff s2"><label>Email</label><input id="uE" type="email" value="${esc(u.email||'')}"></div>
     <div class="ff"><label>Mobile</label><input id="uMob" value="${esc(u.mobile||'')}"></div>
     <div class="ff"><label>Date of Joining</label><input id="uDOJ" type="date" value="${esc(u.doj||'')}"></div>
-    <div class="ff s2"><label>${isE?'New Password (blank=no change)':'Password *'}</label><input id="uP" type="password" placeholder="min 6 chars"></div>
+    <div class="ff s2"><label>${isE?'New Password (blank=no change)':'Password *'}</label><input id="uP" type="password" placeholder="min 6 chars" autocomplete="new-password"></div>
   </div>
   <div class="fsec">Department / Service Access *</div>
   <div class="srv-chk" id="uDeptChk">${deptChk}</div>`,
@@ -2383,6 +2432,17 @@ async function saveU(id){
   if(!dp.length){toast('Select at least one Department / Service','e');return}
   if(!id&&!pw){toast('Password required','e');return}
   if(pw&&pw.length<6){toast('Min 6 chars','e');return}
+  if(id&&pw){
+    // A non-empty password on an EDIT (not add) immediately revokes every
+    // live session for this user the moment it's saved — including your
+    // own, if you're editing yourself and a password manager silently
+    // filled this field. Confirm it was intentional before sending it.
+    const isSelf=id===SES.user.id;
+    const warn=isSelf
+      ? 'This will change YOUR OWN password and log you out of this session immediately. Continue?'
+      : `This will reset ${nm||'this user'}'s password and log them out of all their active sessions immediately. Continue?`;
+    if(!confirm(warn))return;
+  }
   const extra={empId:v('uEmpId'),designation:v('uDesig'),mobile:v('uMob'),doj:v('uDOJ')};
   if(GAS_OK){
     showLoading('Saving user…');
