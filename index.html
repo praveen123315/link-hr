@@ -7,6 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<!-- SheetJS: reads real .xlsx/.xls binary files client-side for Bulk Import Tasks -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{
   /* Premium brand palette — deep navy ink + refined gold accent */
@@ -845,7 +847,7 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
 function v(id){return(document.getElementById(id)||{}).value||''}
 function sv(id,val){const el=document.getElementById(id);if(el)el.value=val||''}
 function fmt(n){return'₹'+Number(n||0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2})}
-function fd(d){if(!d)return'—';try{return new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}catch{return d}}
+function fd(d){if(!d)return'—';try{const dt=new Date(d);if(isNaN(dt.getTime()))return String(d);return dt.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}catch{return String(d)}}
 function tod(){return new Date().toISOString().split('T')[0]}
 function eid(){return'ENQ-'+new Date().getFullYear()+'-'+String(ENQUIRIES.length+1).padStart(3,'0')}
 function cid(){return'CL-'+new Date().getFullYear()+'-'+String(CLIENTS.length+1).padStart(3,'0')}
@@ -3785,18 +3787,26 @@ async function rTaskImport(){
   dTaskImport();
 }
 function dTaskImport(){
-  let h=`<div class="ph"><div><h2>Bulk Import Tasks</h2><p class="ph-sub">Upload a CSV to create many tasks at once</p></div>
-  <div class="ph-act"><button class="btn bteal" onclick="downloadTaskTemplate()">Download Template</button></div></div>
+  let h=`<div class="ph"><div><h2>Bulk Import Tasks</h2><p class="ph-sub">Upload an Excel (.xlsx) or CSV file to create many tasks at once</p></div>
+  <div class="ph-act"><button class="btn bteal" onclick="downloadTaskTemplate()">Download Template (.xlsx)</button></div></div>
   <div class="card">
-  <div class="impzone" onclick="document.getElementById('bulkFileInput').click()">📄 Click to select a CSV file<br><span style="font-size:11px;color:var(--t3)">Columns: title, description, category, priority, assignedTo (username), dueDate (YYYY-MM-DD), dueTime, recurrence</span></div>
-  <input type="file" id="bulkFileInput" accept=".csv" style="display:none" onchange="bulkFileSelected(this)">
+  <div class="impzone" onclick="document.getElementById('bulkFileInput').click()">📄 Click to select an Excel (.xlsx) or CSV file<br><span style="font-size:11px;color:var(--t3)">Columns: title, description, category, priority, assignedTo (username), dueDate (YYYY-MM-DD), dueTime, recurrence, recurrenceEnd</span></div>
+  <input type="file" id="bulkFileInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="bulkFileSelected(this)">
   <div id="bulkPreview" style="margin-top:16px"></div>
   </div>`;
   paintPA(h);
 }
+// Real .xlsx (not the CSV-labelled-as-xls that xls() produces elsewhere)
+// so the template someone downloads, fills in, and re-uploads round-trips
+// through the same Excel parsing path used by bulkFileSelected below.
 function downloadTaskTemplate(){
-  const sample=[{title:'Example task title',description:'Optional details',category:TASK_CATEGORIES[0]?.Name||'General',priority:'Medium',assignedTo:'username',dueDate:'2026-08-01',dueTime:'17:00',recurrence:'One-Time'}];
-  xls(sample,'task_import_template');
+  const sample=[{title:'Example task title',description:'Optional details',category:TASK_CATEGORIES[0]?.Name||'General',priority:'Medium',assignedTo:'username',dueDate:'2026-08-01',dueTime:'17:00',recurrence:'One-Time',recurrenceEnd:''}];
+  const ws=XLSX.utils.json_to_sheet(sample);
+  ws['!cols']=[{wch:24},{wch:24},{wch:14},{wch:10},{wch:14},{wch:12},{wch:8},{wch:12},{wch:14}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Tasks');
+  XLSX.writeFile(wb,'task_import_template.xlsx');
+  toast('Template downloaded!','s');
 }
 function parseCSV(text){
   const rows=[];let row=[],cur='',inQ=false;
@@ -3815,19 +3825,102 @@ function parseCSV(text){
   if(cur||row.length){row.push(cur);rows.push(row);}
   return rows.filter(r=>r.some(c=>c.trim()!==''));
 }
+// Excel stores dates/times as plain serial numbers (days since 1899-12-30;
+// the fractional part of a day = time-of-day, e.g. 0.75 = 18:00). We convert
+// straight from that number using Date.UTC() + getUTC*() only — a
+// millisecond timestamp built from Date.UTC and read back with the UTC
+// getters is timezone-proof by construction. We deliberately do NOT ask
+// SheetJS for cellDates:true / a ready-made JS Date object: SheetJS builds
+// that Date using the LOCAL timezone constructor internally, so for anyone
+// outside UTC (this system's users are in India, UTC+5:30) reading it back
+// with getUTCHours() does not reliably undo that — it silently shifted a
+// clean "18:00" into a garbled "12:38"-style time. Working from the raw
+// serial number sidesteps the whole class of bug.
+function excelDateToYMD(v){
+  if(typeof v==='number'&&isFinite(v)){
+    var utcMs=Math.round((v-25569)*86400*1000); // 25569 = days between 1899-12-30 and 1970-01-01
+    var d=new Date(utcMs);
+    if(!isNaN(d))return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0');
+  }
+  if(v instanceof Date&&!isNaN(v)){
+    return v.getFullYear()+'-'+String(v.getMonth()+1).padStart(2,'0')+'-'+String(v.getDate()).padStart(2,'0');
+  }
+  return String(v??'').trim();
+}
+function excelTimeToHM(v){
+  if(typeof v==='number'&&isFinite(v)){
+    var totalMin=Math.round((v-Math.floor(v))*1440)%1440;
+    return String(Math.floor(totalMin/60)).padStart(2,'0')+':'+String(totalMin%60).padStart(2,'0');
+  }
+  if(v instanceof Date&&!isNaN(v)){
+    return String(v.getHours()).padStart(2,'0')+':'+String(v.getMinutes()).padStart(2,'0');
+  }
+  return String(v??'').trim();
+}
 function bulkFileSelected(inp){
   const f=inp.files[0];if(!f)return;
+  const isExcel=/\.(xlsx|xls)$/i.test(f.name);
   const reader=new FileReader();
-  reader.onload=e=>{
-    const rows=parseCSV(e.target.result);
-    if(!rows.length){toast('Empty file','e');return}
-    const header=rows[0].map(h=>h.trim().toLowerCase());
-    const items=rows.slice(1).map(r=>{
-      const o={};header.forEach((h,i)=>o[h]=(r[i]||'').trim());return o;
-    });
-    validateBulkImport(items);
-  };
-  reader.readAsText(f);
+  reader.onerror=()=>toast('Could not read the file','e');
+  if(isExcel){
+    reader.onload=e=>{
+      let items;
+      try{
+        // cellDates left OFF on purpose — see excelDateToYMD/excelTimeToHM
+        // comment above. raw:true keeps date/time cells as plain numeric
+        // serials so we can convert them ourselves without any timezone
+        // involved, instead of SheetJS pre-formatting them into whatever
+        // display format the spreadsheet's own number format happened to
+        // use (which wouldn't reliably match YYYY-MM-DD anyway).
+        const wb=XLSX.read(e.target.result,{type:'array'});
+        const ws=wb.Sheets[wb.SheetNames[0]];
+        const json=XLSX.utils.sheet_to_json(ws,{defval:'',raw:true});
+        if(!json.length){toast('Empty file','e');return}
+        items=json.map(r=>{
+          const o={};
+          Object.keys(r).forEach(k=>{
+            const key=k.trim().toLowerCase();
+            if(key==='duedate')o[key]=excelDateToYMD(r[k]);
+            else if(key==='duetime')o[key]=excelTimeToHM(r[k]);
+            else if(key==='recurrenceend')o[key]=r[k]?excelDateToYMD(r[k]):'';
+            else o[key]=String(r[k]??'').trim();
+          });
+          return o;
+        });
+      }catch(err){
+        toast('Could not read that Excel file — please use the downloaded template format','e');
+        return;
+      }
+      validateBulkImport(items);
+    };
+    reader.readAsArrayBuffer(f);
+  }else{
+    reader.onload=e=>{
+      const rows=parseCSV(e.target.result);
+      if(!rows.length){toast('Empty file','e');return}
+      const header=rows[0].map(h=>h.trim().toLowerCase());
+      const items=rows.slice(1).map(r=>{
+        const o={};header.forEach((h,i)=>o[h]=(r[i]||'').trim());return o;
+      });
+      validateBulkImport(items);
+    };
+    reader.readAsText(f);
+  }
+}
+function isValidYMD(s){
+  const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if(!m)return false;
+  const y=+m[1],mo=+m[2],d=+m[3];
+  if(mo<1||mo>12)return false;
+  const dt=new Date(y,mo-1,d);
+  return dt.getFullYear()===y&&dt.getMonth()===mo-1&&dt.getDate()===d;
+}
+function ymdSwapHint(s){
+  const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if(!m)return'';
+  const mo=+m[2],d=+m[3];
+  if(mo>12&&d>=1&&d<=12)return` — looks like day/month are swapped, did you mean ${m[1]}-${m[3]}-${m[2]}?`;
+  return'';
 }
 function validateBulkImport(items){
   const seen=new Set();
@@ -3835,7 +3928,7 @@ function validateBulkImport(items){
     const errors=[];
     if(!it.title)errors.push('Missing title');
     if(!it.duedate)errors.push('Missing dueDate');
-    else if(!/^\d{4}-\d{2}-\d{2}$/.test(it.duedate))errors.push('dueDate must be YYYY-MM-DD');
+    else if(!isValidYMD(it.duedate))errors.push('dueDate must be a valid YYYY-MM-DD date'+ymdSwapHint(it.duedate));
     const assignee=TASK_ASSIGNEES.find(a=>a.Username===it.assignedto);
     if(!it.assignedto)errors.push('Missing assignedTo');
     else if(!assignee)errors.push('Unknown assignedTo username: '+it.assignedto);
@@ -3845,10 +3938,11 @@ function validateBulkImport(items){
     seen.add(dupKey);
     if(existsInSheet)errors.push('Duplicate of an existing task');
     if(dupInBatch)errors.push('Duplicate within this file');
+    if(it.recurrenceend&&!isValidYMD(it.recurrenceend))errors.push('recurrenceEnd must be a valid YYYY-MM-DD date'+ymdSwapHint(it.recurrenceend));
     return {
       row:idx+2, title:it.title, description:it.description||'', category:it.category||'General',
       priority:it.priority||'Medium', assignedTo:it.assignedto, assignedToName:assignee?assignee.Name:'',
-      dueDate:it.duedate, dueTime:it.duetime||'', recurrence:it.recurrence||'One-Time',
+      dueDate:it.duedate, dueTime:it.duetime||'', recurrence:it.recurrence||'One-Time', recurrenceEnd:it.recurrenceend||'',
       errors, valid:errors.length===0
     };
   });
@@ -3860,7 +3954,7 @@ function renderBulkPreview(){
   let h=`<div class="fsec">Preview — ${bulkImportRows.length} rows (${valid} valid, ${invalid} with issues)</div>
   <div class="tw"><table><tr><th>#</th><th>Title</th><th>Assignee</th><th>Due</th><th>Recurrence</th><th>Status</th></tr>`;
   bulkImportRows.forEach(r=>{
-    h+=`<tr><td>${r.row}</td><td>${esc(r.title)}</td><td>${esc(r.assignedToName||r.assignedTo)}</td><td>${esc(r.dueDate)} ${esc(r.dueTime)}</td><td>${esc(r.recurrence)}</td>
+    h+=`<tr><td>${r.row}</td><td>${esc(r.title)}</td><td>${esc(r.assignedToName||r.assignedTo)}</td><td>${esc(r.dueDate)} ${esc(r.dueTime)}</td><td>${esc(r.recurrence)}${r.recurrenceEnd?' <span style="color:var(--t3)">until '+esc(r.recurrenceEnd)+'</span>':''}</td>
     <td>${r.valid?'<span class="bdg bTCompleted">Ready</span>':`<span class="bdg bTOverdue">${esc(r.errors.join('; '))}</span>`}</td></tr>`;
   });
   h+=`</table></div>
@@ -3873,7 +3967,7 @@ function renderBulkPreview(){
 async function commitBulkImport(){
   const validRows=bulkImportRows.filter(r=>r.valid).map(r=>({
     title:r.title,description:r.description,category:r.category,priority:r.priority,
-    assignedTo:r.assignedTo,dueDate:r.dueDate,dueTime:r.dueTime,recurrence:r.recurrence
+    assignedTo:r.assignedTo,dueDate:r.dueDate,dueTime:r.dueTime,recurrence:r.recurrence,recurrenceEnd:r.recurrenceEnd
   }));
   if(!validRows.length){toast('No valid rows to import','e');return}
   showLoading('Importing tasks…');
