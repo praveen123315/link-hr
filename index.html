@@ -886,7 +886,7 @@ function sBadge(s){
     'Pending for PI':'bPend','PI Created':'bPI','Final PI':'bDone','Completed':'bDone','Payment Received':'bActive','Rejected':'bRej','Paid':'bActive','Partial':'bPI','Overdue':'bRej','Pending':'bPend'};
   return`<span class="bdg ${m[s]||'chip'}">${esc(s)}</span>`;
 }
-function rBadge(r){const m={admin:'bDone',accounts:'bPI',manager:'bNew',coordinator:'bReg',employee:'chip'};const lbl={coordinator:'Process Coordinator',employee:'Employee'};return`<span class="bdg ${m[r]||'chip'}">${esc(lbl[r]||r)}</span>`}
+function rBadge(r){const m={admin:'bDone',accounts:'bPI',manager:'bNew',coordinator:'bReg',employee:'chip'};const lbl={coordinator:'Process Coordinator',employee:'Employee',manager:'Manager'};return`<span class="bdg ${m[r]||'chip'}">${esc(lbl[r]||r)}</span>`}
 function tsBadge(s){const m={Pending:'bTPending','In Progress':'bTInProgress',Completed:'bTCompleted',Overdue:'bTOverdue','On Hold':'bTOnHold'};return`<span class="bdg ${m[s]||'chip'}">${esc(s)}</span>`}
 function tpBadge(p){const m={Low:'bLow',Medium:'bMedium',High:'bHigh',Critical:'bCritical'};return`<span class="bdg ${m[p]||'chip'}">${esc(p)}</span>`}
 
@@ -1398,8 +1398,7 @@ async function bootApp(){
   document.getElementById('sbRole').textContent=u.role.toUpperCase();
   const isAcc=u.role==='accounts'||u.role==='admin';
   const isAdm=u.role==='admin';
-  const isCoord=u.role==='coordinator';
-  const isTaskManager=isAdm||isCoord;
+  const isTaskManager=isTaskManagerRole();
   ['niPI','niInv','niPay'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display=isAcc?'':'none'});
   ['niAdLbl','niUsers','niCos','niEmp'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display=isAdm?'':'none'});
   ['niAllTasks','niAppraisal','niTaskRep'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display=isTaskManager?'':'none'});
@@ -3161,7 +3160,7 @@ let TASK_ASSIGNEES=[];
 let NOTIF_POLL_TIMER=null;
 let NOTIFICATIONS=[];
 
-function isTaskManagerRole(){return SES && (SES.user.role==='admin'||SES.user.role==='coordinator')}
+function isTaskManagerRole(){return SES && (SES.user.role==='admin'||SES.user.role==='coordinator'||SES.user.role==='manager')}
 function isTaskAdmin(){return SES && SES.user.role==='admin'}
 
 function mapTask(r){
@@ -3358,7 +3357,7 @@ function pubTaskSuccess(title,msg){
 }
 
 // ────────────────────────────────────
-//  TASK DASHBOARD (role-aware: admin=company-wide, coordinator=dept-wide, employee=personal)
+//  TASK DASHBOARD (role-aware: admin=company-wide, coordinator/manager=dept-wide, employee=personal)
 // ────────────────────────────────────
 async function rTaskDash(){
   await Promise.all([loadTaskCategories(),loadTaskAssignees()]);
@@ -3372,7 +3371,7 @@ async function rTaskDash(){
 }
 function dTaskDash(s){
   const u=SES.user;
-  const scopeLabel=u.role==='admin'?'company-wide':u.role==='coordinator'?'your department(s)':'your tasks';
+  const scopeLabel=u.role==='admin'?'company-wide':(u.role==='coordinator'||u.role==='manager')?'your department(s)':'your tasks';
   let h=`<div class="ph"><div><h2>Task Dashboard</h2><p class="ph-sub">Overview of ${esc(scopeLabel)}</p></div>
   <div class="ph-act">${isTaskManagerRole()?`<button class="btn badd" onclick="taskForm()">+ New Task</button>`:''}<button class="btn bout" onclick="go('mytasks')">My Tasks</button></div></div>
   <div class="sg">
@@ -3648,13 +3647,13 @@ function refreshMyTasksIfOn(){if(stillOn('mytasks'))loadTasks({mine:true,view:my
 function refreshAllTasksIfOn(){if(stillOn('alltasks'))dAllTasks();}
 
 // ────────────────────────────────────
-//  ALL TASKS — admin (company-wide) / coordinator (dept-wide)
+//  ALL TASKS — admin (company-wide) / coordinator / manager (dept-wide)
 //  management table: create, assign, reassign, archive, delete
 // ────────────────────────────────────
-let atSr='',atStatus='',atPriority='',atCategory='',atArchived=false;
+let atSr='',atStatus='',atPriority='',atCategory='',atAssignee='',atDueDate='',atArchived=false;
 async function rAllTasks(){
-  if(!isTaskManagerRole()){toast('Access restricted to Admin / Process Coordinator','e');go('taskdash');return}
-  atSr='';atStatus='';atPriority='';atCategory='';atArchived=false;
+  if(!isTaskManagerRole()){toast('Access restricted to Admin / Process Coordinator / Manager','e');go('taskdash');return}
+  atSr='';atStatus='';atPriority='';atCategory='';atAssignee='';atDueDate='';atArchived=false;
   await Promise.all([loadTaskCategories(),loadTaskAssignees()]);
   await loadTasks({});
   if(!stillOn('alltasks'))return;
@@ -3666,8 +3665,11 @@ function dAllTasks(){
   if(atStatus)rows=rows.filter(t=>t.status===atStatus);
   if(atPriority)rows=rows.filter(t=>t.priority===atPriority);
   if(atCategory)rows=rows.filter(t=>t.category===atCategory);
+  if(atAssignee)rows=rows.filter(t=>t.assignedTo===atAssignee);
+  if(atDueDate)rows=rows.filter(t=>t.dueDate===atDueDate);
   const exp=rows.map(t=>({'Task ID':t.id,'Title':t.title,'Category':t.category,'Priority':t.priority,'Status':t.status,
     'Assigned To':t.assignedToName,'Assigned By':t.assignedByName,'Due':fdt(t.dueDate,t.dueTime),'Created':fd(t.createdAt)}));
+  const anyFilter=atSr||atStatus||atPriority||atCategory||atAssignee||atDueDate;
   let h=`<div class="ph"><div><h2>All Tasks</h2><p class="ph-sub">${rows.length} task${rows.length!==1?'s':''}</p></div>
   <div class="ph-act">
     <button class="btn bexp" onclick="xls(window._atExport,'tasks')">Export</button>
@@ -3679,6 +3681,9 @@ function dAllTasks(){
     <select class="fsel" onchange="atStatus=this.value;dAllTasks()"><option value="">All Status</option>${TASK_STATUSES.map(s=>`<option value="${s}" ${atStatus===s?'selected':''}>${s}</option>`).join('')}</select>
     <select class="fsel" onchange="atPriority=this.value;dAllTasks()"><option value="">All Priority</option>${TASK_PRIORITIES.map(p=>`<option value="${p}" ${atPriority===p?'selected':''}>${p}</option>`).join('')}</select>
     <select class="fsel" onchange="atCategory=this.value;dAllTasks()"><option value="">All Categories</option>${categoryOptsHtml(atCategory)}</select>
+    <select class="fsel" onchange="atAssignee=this.value;dAllTasks()"><option value="">All Employees</option>${TASK_ASSIGNEES.map(a=>`<option value="${esc(a.Username)}" ${atAssignee===a.Username?'selected':''}>${esc(a.Name)}</option>`).join('')}</select>
+    <input type="date" class="fsel" value="${esc(atDueDate)}" onchange="atDueDate=this.value;dAllTasks()" title="Filter by due date">
+    ${anyFilter?`<button class="ib" onclick="atClearFilters()">Clear filters</button>`:''}
   </div>
   <div class="tw"><table><tr><th>Task ID</th><th>Title</th><th>Category</th><th>Priority</th><th>Status</th><th>Assigned To</th><th>Due</th><th>Actions</th></tr>`;
   if(!rows.length)h+=`<tr><td colspan="8" class="empty">No tasks found</td></tr>`;
@@ -3694,6 +3699,7 @@ function dAllTasks(){
   window._atExport=exp;
   paintPA(h);
 }
+function atClearFilters(){atSr='';atStatus='';atPriority='';atCategory='';atAssignee='';atDueDate='';dAllTasks();}
 async function atArchiveTask(id,archived){
   showLoading('Saving…');
   const res=await gasCall('archiveTask',{id,archived});
@@ -3704,11 +3710,11 @@ async function atArchiveTask(id,archived){
 }
 
 // ────────────────────────────────────
-//  TASK FORM — create / edit (Admin / Coordinator only)
+//  TASK FORM — create / edit (Admin / Coordinator / Manager only)
 // ────────────────────────────────────
 let taskFormAttachments=[]; // array of {name,url}
 async function taskForm(id=''){
-  if(!isTaskManagerRole()){toast('Only Admin / Process Coordinator can create tasks','e');return}
+  if(!isTaskManagerRole()){toast('Only Admin / Process Coordinator / Manager can create tasks','e');return}
   if(!TASK_ASSIGNEES.length)await loadTaskAssignees();
   if(!TASK_CATEGORIES.length)await loadTaskCategories();
   const t=id?TASKS.find(x=>x.id===id):null;
@@ -4027,14 +4033,14 @@ async function delCat(id){
 }
 
 // ────────────────────────────────────
-//  APPRAISAL DASHBOARD (Admin / Coordinator)
+//  APPRAISAL DASHBOARD (Admin / Coordinator / Manager)
 //  Weighted productivity score — see _getAppraisalData in Code.gs
 //  for the exact formula (on-time %, completion rate, quality,
 //  overdue penalty, completion speed).
 // ────────────────────────────────────
 let apFrom='',apTo='';
 async function rAppraisal(){
-  if(!isTaskManagerRole()){toast('Access restricted to Admin / Process Coordinator','e');go('taskdash');return}
+  if(!isTaskManagerRole()){toast('Access restricted to Admin / Process Coordinator / Manager','e');go('taskdash');return}
   const now=new Date();
   apFrom=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
   apTo=tod();
@@ -4074,11 +4080,11 @@ async function dAppraisal(){
 }
 
 // ────────────────────────────────────
-//  TASK REPORTS (Admin / Coordinator)
+//  TASK REPORTS (Admin / Coordinator / Manager)
 // ────────────────────────────────────
 let trFrom='',trTo='',trDept='',trStatus='';
 async function rTaskRep(){
-  if(!isTaskManagerRole()){toast('Access restricted to Admin / Process Coordinator','e');go('taskdash');return}
+  if(!isTaskManagerRole()){toast('Access restricted to Admin / Process Coordinator / Manager','e');go('taskdash');return}
   trFrom='';trTo='';trDept='';trStatus='';
   if(!stillOn('taskrep'))return;
   await dTaskRep();
