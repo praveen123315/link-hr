@@ -708,19 +708,35 @@ function _sleep(ms){ return new Promise(res=>setTimeout(res, ms)); }
 // changePassword, which are safe to repeat or already de-duplicated
 // server-side — get the automatic retry. Everything else fails fast and
 // visibly instead, which is far better than a silent duplicate record.
+//
+// v2.1.7: added deleteTaskCategory — a delete-by-ID is safe to repeat by
+// nature (a second attempt either succeeds or comes back "Not found", never
+// a duplicate), and this was the action reported failing with "server busy"
+// under normal admin use. saveTaskCategory is NOT added here even though
+// its EDIT path (id present) is just as safe to retry — its CREATE path
+// (no id) appends a new row, so a blind retry there could double up a
+// category. See canRetry below for how the edit-only case is handled
+// instead of just adding the action name to this set.
 const GAS_RETRYABLE_ACTIONS = new Set([
   'bootstrap','getConfig','getEnquiries','getClients','getRequests','getCompanies',
   'getUsers','getStaffList','getPIQueue','getInvoiceQueue','getReportData','getDashboard',
   'login','logout','changePassword',
   'getTasks','getTask','getTaskCategories','getTaskAssignees','getNotifications',
-  'getTaskDashboard','getAppraisalData','getTaskReportData'
+  'getTaskDashboard','getAppraisalData','getTaskReportData',
+  'deleteTaskCategory'
 ]);
 const GAS_RETRY_DELAYS = [800, 1800]; // ms — 2 retries total
 
 async function gasCall(action, data={}, _attempt=0) {
   if (!GAS_OK) return { success: false, error: 'GAS not connected' };
   if (_sessionDead) return { success: false, error: 'Session expired' };
-  const canRetry = GAS_RETRYABLE_ACTIONS.has(action);
+  // saveTaskCategory is only safe to auto-retry on its EDIT path (an id
+  // means _saveTaskCategory updates an existing row by that id — repeating
+  // it is a no-op change, not a duplicate). Its CREATE path (no id) stays
+  // out of GAS_RETRYABLE_ACTIONS entirely, on purpose — see the comment
+  // above that Set.
+  const canRetry = GAS_RETRYABLE_ACTIONS.has(action) ||
+    (action === 'saveTaskCategory' && !!data.id);
   try {
     const body = { action, ...data };
     if (SES && SES.token) body.token = SES.token;
