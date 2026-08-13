@@ -727,6 +727,27 @@ const GAS_RETRYABLE_ACTIONS = new Set([
 ]);
 const GAS_RETRY_DELAYS = [800, 1800]; // ms — 2 retries total
 
+// Matches the wording Apps Script/Sheets itself uses for a TRANSIENT,
+// infrastructure-level failure (a Sheets service hiccup, a lock timeout,
+// hitting the concurrent-execution ceiling) — as opposed to a real
+// business-logic error this app returns on purpose ("Invalid username or
+// password", "Access denied", "Client already exists…", etc). None of this
+// app's own error strings match this pattern, so it's safe to use as the
+// signal for "worth retrying automatically".
+//
+// v2.2.0: _handle()'s top-level try/catch already turns an uncaught
+// exception (e.g. "Exception: Service Spreadsheets timed out…") into a
+// perfectly valid JSON response with success:false — which used to mean it
+// hit NEITHER retry path below: it's valid JSON, so the non-JSON-response
+// retry never fired, and its error text doesn't mention "Session expired",
+// so the re-login retry never fired either. A retryable action's read would
+// just fail outright on the first transient hiccup, with the user seeing a
+// raw error mid-task — exactly what a flaky "session timeout" would look
+// and feel like from the outside, even though the session itself was fine.
+function _looksTransient(msg) {
+  return /exception|time[- ]?out|too many times|service .*(unavailable|error)|internal error|lock/i.test(String(msg||''));
+}
+
 async function gasCall(action, data={}, _attempt=0) {
   if (!GAS_OK) return { success: false, error: 'GAS not connected' };
   if (_sessionDead) return { success: false, error: 'Session expired' };
@@ -758,8 +779,19 @@ async function gasCall(action, data={}, _attempt=0) {
         ? 'Server is busy right now — please try again in a moment.'
         : 'Server is busy right now — please check whether this went through before retrying.' };
     }
+    // A valid JSON failure caused by a transient backend hiccup (see
+    // _looksTransient above) gets the exact same automatic retry a non-JSON
+    // response gets — same delays, same attempt budget — instead of
+    // surfacing immediately just because it happened to come back as
+    // well-formed JSON.
+    if (!json.success && canRetry && _attempt < GAS_RETRY_DELAYS.length && _looksTransient(json.error)) {
+      console.warn(`GAS transient error (attempt ${_attempt+1}/${GAS_RETRY_DELAYS.length+1}):`, json.error);
+      await _sleep(GAS_RETRY_DELAYS[_attempt]);
+      return gasCall(action, data, _attempt+1);
+    }
     // Auto re-login if session expired (deduped across parallel calls)
     if (!json.success && json.error &&
+
         (json.error.includes('Session expired') || json.error.includes('Unauthorised') || json.error.includes('Unauthorized'))) {
       if (!_reloginInFlight) {
         console.warn('Session expired — attempting auto re-login…');
@@ -3171,6 +3203,18 @@ const TASK_PRIORITIES=['Low','Medium','High','Critical'];
 const TASK_STATUSES=['Pending','In Progress','Completed','On Hold','Overdue'];
 const TASK_RECURRENCES=['One-Time','Daily','Weekly','Monthly','Quarterly','Half-Yearly','Yearly'];
 let TASKS=[];
+// v2.2.0: TASKS holds whichever scope was last fetched with loadTasks() —
+// the full role-scoped list used by All Tasks / task forms / bulk import.
+// My Tasks now gets its OWN cache (MY_TASKS, via loadMyTasks()) instead of
+// sharing TASKS. They used to share one array because both pages always
+// re-fetched on every navigation, so whichever page you were on had
+// already overwritten it with the right scope by the time it rendered.
+// Now that both pages render instantly from cache before their background
+// refresh completes (see rMyTasks/rAllTasks below), sharing one array
+// would risk a Manager's "My Tasks" briefly rendering from a stale
+// company-wide fetch left over from a recent All Tasks visit, or vice
+// versa — two separate caches removes that risk entirely.
+let MY_TASKS=[];
 let TASK_CATEGORIES=[];
 let TASK_ASSIGNEES=[];
 let NOTIF_POLL_TIMER=null;
@@ -3193,6 +3237,14 @@ async function loadTasks(params={}){
   if(!GAS_OK)return[];
   const res=await gasCall('getTasks',params);
   if(res.success){TASKS=res.data.map(mapTask);return TASKS;}
+  toast('Failed to load tasks: '+(res.error||''),'e');return[];
+}
+// Dedicated loader for the "mine" scope — see the MY_TASKS comment above
+// for why this doesn't just reuse loadTasks()/TASKS.
+async function loadMyTasks(params={}){
+  if(!GAS_OK)return[];
+  const res=await gasCall('getTasks',Object.assign({mine:true},params));
+  if(res.success){MY_TASKS=res.data.map(mapTask);return MY_TASKS;}
   toast('Failed to load tasks: '+(res.error||''),'e');return[];
 }
 // Categories and assignees rarely change within a session, but every task
@@ -3234,6 +3286,15 @@ function isOverdueSoon(task){
 // ────────────────────────────────────
 async function refreshNotifCount(){
   if(!GAS_OK||!SES)return;
+  // v2.2.0: skip polling while this tab is in the background. A 60s poll
+  // from every open-but-idle tab adds up across a day, and it's pure
+  // overhead competing with active users for the same concurrent-execution
+  // ceiling noted in the bootstrap comment above — this is exactly the
+  // kind of avoidable load this whole pass is trying to cut. Switching
+  // back to the tab (see the visibilitychange listener below) triggers an
+  // immediate refresh, so the unread count never lags by more than the
+  // time the tab was actually hidden.
+  if(document.hidden)return;
   const res=await gasCall('getNotifications',{});
   if(!res.success)return;
   NOTIFICATIONS=res.data;
@@ -3241,6 +3302,7 @@ async function refreshNotifCount(){
   const dot=document.getElementById('notifDot');
   if(dot){dot.style.display=unread?'flex':'none';dot.textContent=unread>99?'99+':unread;}
 }
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden&&SES)refreshNotifCount(); });
 function toggleNotifPanel(){
   const p=document.getElementById('notifPanel');
   if(!p)return;
@@ -3378,15 +3440,24 @@ function pubTaskSuccess(title,msg){
 //  rights (see loadTaskAssignees) but no longer gets dept-wide MONITOR
 //  visibility, as of backend v2.1.5)
 // ────────────────────────────────────
-async function rTaskDash(){
+// v2.2.0: same cache-first pattern as the rest of the app — render the last
+// known stats instantly (if any) instead of always blocking behind a
+// spinner, then refresh in the background at most once every 20s.
+let TASK_DASH_STATS=null;
+async function rTaskDash(force){
   await Promise.all([loadTaskCategories(),loadTaskAssignees()]);
   if(!stillOn('taskdash'))return;
-  showLoading('Loading task dashboard…');
-  const res=await gasCall('getTaskDashboard',{});
+  if(TASK_DASH_STATS)dTaskDash(TASK_DASH_STATS);
+  else showLoading('Loading task dashboard…');
+  if(force||_shouldRefresh('taskDashboard')){
+    const res=await gasCall('getTaskDashboard',{});
+    hideLoading();
+    if(!stillOn('taskdash'))return;
+    if(!res.success){ if(!TASK_DASH_STATS)paintPA(`<div class="empty">Failed to load dashboard: ${esc(res.error||'')}</div>`); return; }
+    TASK_DASH_STATS=res.stats;
+  }
   hideLoading();
-  if(!stillOn('taskdash'))return;
-  if(!res.success){paintPA(`<div class="empty">Failed to load dashboard: ${esc(res.error||'')}</div>`);return}
-  dTaskDash(res.stats);
+  dTaskDash(TASK_DASH_STATS);
 }
 function dTaskDash(s){
   const u=SES.user;
@@ -3426,18 +3497,56 @@ function dTaskDash(s){
 // ────────────────────────────────────
 let myTaskView='today', myTaskMode='list', myTaskSearch='';
 let myCalDate=new Date();
+// v2.2.0: view (today/week/month/…) used to be a SERVER-side filter — every
+// tab click called loadTasks({mine:true,view:v}), i.e. a full GAS round-trip
+// + full Tasks-sheet scan, just to switch which subset of already-fetched
+// data was showing. Tasks are now fetched ONCE per page visit (like every
+// other module) and every view tab is a pure client-side filter over that
+// same array — mirrors the exact logic _getTasks() used to apply server-side,
+// so behaviour is unchanged, it just doesn't leave the browser to redo it.
+function filterTasksByView(rows,view){
+  if(!view||view==='all')return rows;
+  const todayStr=tod(), now=new Date();
+  return rows.filter(t=>{
+    const due=t.dueDate?String(t.dueDate).slice(0,10):'';
+    if(view==='today')return due===todayStr;
+    if(view==='week'){
+      if(!due)return false;
+      const wEnd=new Date(now);wEnd.setDate(wEnd.getDate()+7);
+      const dDate=new Date(due+'T00:00:00');
+      return dDate>=new Date(todayStr+'T00:00:00')&&dDate<=wEnd;
+    }
+    if(view==='month'){
+      if(!due)return false;
+      const dd=new Date(due+'T00:00:00');
+      return dd.getMonth()===now.getMonth()&&dd.getFullYear()===now.getFullYear();
+    }
+    if(view==='upcoming')return !!due&&due>todayStr;
+    if(view==='overdue')return t.status==='Overdue';
+    if(view==='completed')return t.status==='Completed';
+    return true;
+  });
+}
 async function rMyTasks(){
   myTaskView='today';myTaskMode='list';myTaskSearch='';myCalDate=new Date();
   await Promise.all([loadTaskCategories(),loadTaskAssignees()]);
-  await loadTasks({mine:true,includeTemplates:false});
-  if(!stillOn('mytasks'))return;
+  // Same instant-from-cache-then-background-sync pattern as Enquiries/
+  // Clients/Requests (see rEnq) — render whatever's already in MY_TASKS
+  // right away, then refresh quietly in the background at most once every
+  // 20s.
+  const hadCache=MY_TASKS.length>0;
+  if(hadCache)dMyTasks();
+  if(_shouldRefresh('myTasks')){
+    await loadMyTasks({includeTemplates:false});
+    if(!stillOn('mytasks'))return;
+  }
   dMyTasks();
 }
-async function myTaskViewSet(v){myTaskView=v;await loadTasks({mine:true,view:v});if(stillOn('mytasks'))dMyTasks();}
+function myTaskViewSet(v){myTaskView=v;dMyTasks();}
 function myTaskModeSet(m){myTaskMode=m;dMyTasks();}
 const TASK_VIEW_TABS=[['today','Today'],['week','This Week'],['month','This Month'],['upcoming','Upcoming'],['overdue','Overdue'],['completed','Completed'],['all','All']];
 function dMyTasks(){
-  let rows=[...TASKS];
+  let rows=filterTasksByView(MY_TASKS,myTaskView);
   if(myTaskSearch){const q=myTaskSearch.toLowerCase();rows=rows.filter(t=>(t.title+t.category).toLowerCase().includes(q));}
   let h=`<div class="ph"><div><h2>My Tasks</h2><p class="ph-sub">${rows.length} task${rows.length!==1?'s':''} in this view</p></div>
   <div class="ph-act"><div class="modetabs">
@@ -3492,7 +3601,7 @@ function wireKanbanDnD(){
     col.addEventListener('drop',async e=>{
       e.preventDefault();col.classList.remove('drag-over');
       const id=e.dataTransfer.getData('text/plain');const status=col.dataset.status;
-      const t=TASKS.find(x=>x.id===id);if(!t||t.status===status)return;
+      const t=MY_TASKS.find(x=>x.id===id);if(!t||t.status===status)return;
       showLoading('Updating…');
       const res=await gasCall('updateTaskStatus',{id,status});
       hideLoading();
@@ -3662,8 +3771,8 @@ async function tdSubmitReassign(id){
   if(!res.success){toast(res.error||'Failed','e');return}
   toast('Reassigned','s');openTaskDetail(id);refreshAllTasksIfOn();
 }
-function refreshMyTasksIfOn(){if(stillOn('mytasks'))loadTasks({mine:true,view:myTaskView}).then(()=>{if(stillOn('mytasks'))dMyTasks();});}
-function refreshAllTasksIfOn(){if(stillOn('alltasks'))dAllTasks();}
+function refreshMyTasksIfOn(){if(stillOn('mytasks'))loadMyTasks({includeTemplates:false}).then(()=>{if(stillOn('mytasks'))dMyTasks();});}
+function refreshAllTasksIfOn(){if(stillOn('alltasks'))loadTasks({}).then(()=>{if(stillOn('alltasks'))dAllTasks();});}
 
 // ────────────────────────────────────
 //  ALL TASKS — admin (company-wide) / coordinator (dept-wide) /
@@ -3675,8 +3784,14 @@ async function rAllTasks(){
   if(!isTaskManagerRole()){toast('Access restricted to Admin / Process Coordinator / Manager','e');go('taskdash');return}
   atSr='';atStatus='';atPriority='';atCategory='';atAssignee='';atDueDate='';atArchived=false;
   await Promise.all([loadTaskCategories(),loadTaskAssignees()]);
-  await loadTasks({});
-  if(!stillOn('alltasks'))return;
+  // Same instant-from-cache-then-background-sync pattern as My Tasks/
+  // Enquiries/Clients/Requests — see rMyTasks above.
+  const hadCache=TASKS.length>0;
+  if(hadCache)dAllTasks();
+  if(_shouldRefresh('allTasks')){
+    await loadTasks({});
+    if(!stillOn('alltasks'))return;
+  }
   dAllTasks();
 }
 function dAllTasks(){
@@ -3737,7 +3852,10 @@ async function taskForm(id=''){
   if(!isTaskManagerRole()){toast('Only Admin / Process Coordinator / Manager can create tasks','e');return}
   if(!TASK_ASSIGNEES.length)await loadTaskAssignees();
   if(!TASK_CATEGORIES.length)await loadTaskCategories();
-  const t=id?TASKS.find(x=>x.id===id):null;
+  // v2.2.0: My Tasks and All Tasks now keep separate caches (MY_TASKS vs
+  // TASKS — see the comment on MY_TASKS above), so an edit opened from
+  // either page needs to check both instead of assuming TASKS has it.
+  const t=id?(TASKS.find(x=>x.id===id)||MY_TASKS.find(x=>x.id===id)):null;
   const isE=!!t;
   taskFormAttachments=(t&&t.attachments)?t.attachments.split(',').filter(Boolean).map(u=>({name:'Attachment',url:u})):[];
   openM(isE?'Edit Task':'New Task',`
@@ -3796,7 +3914,7 @@ async function saveTaskForm(id){
   if(!res.success){toast(res.error||'Failed to save task','e');return}
   closeM();toast('Task saved','s');
   refreshMyTasksIfOn();refreshAllTasksIfOn();
-  if(stillOn('taskdash'))rTaskDash();
+  if(stillOn('taskdash'))rTaskDash(true);
 }
 
 // ────────────────────────────────────
