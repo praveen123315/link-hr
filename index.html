@@ -748,6 +748,22 @@ function _looksTransient(msg) {
   return /exception|time[- ]?out|too many times|service .*(unavailable|error)|internal error|lock/i.test(String(msg||''));
 }
 
+// LOCK_BUSY (see _acquireLock() in Code.gs) means the server's shared
+// script lock timed out BEFORE the requested action did anything — Apps
+// Script has no per-resource lock, so every create action across every
+// module (enquiry/client/request/task/PI/invoice/user) and every
+// session-management call (logout/password-reset/revoke) funnels through
+// the SAME project-wide mutex. Under real multi-user load that queue can
+// run deep enough to time out, and because a LOCK_BUSY failure is thrown
+// before the critical section — nothing was written yet — it's always
+// safe to retry, even for the create actions that are otherwise
+// deliberately excluded from GAS_RETRYABLE_ACTIONS (see the comment on
+// that Set) because a normal write failure can't tell you whether the
+// write actually landed before the response was lost.
+function _isLockBusy(msg) {
+  return /LOCK_BUSY/.test(String(msg||''));
+}
+
 async function gasCall(action, data={}, _attempt=0) {
   if (!GAS_OK) return { success: false, error: 'GAS not connected' };
   if (_sessionDead) return { success: false, error: 'Session expired' };
@@ -778,6 +794,13 @@ async function gasCall(action, data={}, _attempt=0) {
       return { success: false, error: canRetry
         ? 'Server is busy right now — please try again in a moment.'
         : 'Server is busy right now — please check whether this went through before retrying.' };
+    }
+    // A LOCK_BUSY failure is safe to retry unconditionally (see
+    // _isLockBusy above) — this check intentionally ignores canRetry.
+    if (!json.success && _isLockBusy(json.error) && _attempt < GAS_RETRY_DELAYS.length) {
+      console.warn(`GAS lock busy (attempt ${_attempt+1}/${GAS_RETRY_DELAYS.length+1}):`, json.error);
+      await _sleep(GAS_RETRY_DELAYS[_attempt]);
+      return gasCall(action, data, _attempt+1);
     }
     // A valid JSON failure caused by a transient backend hiccup (see
     // _looksTransient above) gets the exact same automatic retry a non-JSON
