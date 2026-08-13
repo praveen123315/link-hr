@@ -3357,7 +3357,10 @@ function pubTaskSuccess(title,msg){
 }
 
 // ────────────────────────────────────
-//  TASK DASHBOARD (role-aware: admin=company-wide, coordinator/manager=dept-wide, employee=personal)
+//  TASK DASHBOARD (role-aware: admin=company-wide, coordinator=dept-wide,
+//  manager/employee=own tasks only — manager keeps dept-scoped ASSIGN
+//  rights (see loadTaskAssignees) but no longer gets dept-wide MONITOR
+//  visibility, as of backend v2.1.5)
 // ────────────────────────────────────
 async function rTaskDash(){
   await Promise.all([loadTaskCategories(),loadTaskAssignees()]);
@@ -3371,7 +3374,7 @@ async function rTaskDash(){
 }
 function dTaskDash(s){
   const u=SES.user;
-  const scopeLabel=u.role==='admin'?'company-wide':(u.role==='coordinator'||u.role==='manager')?'your department(s)':'your tasks';
+  const scopeLabel=u.role==='admin'?'company-wide':u.role==='coordinator'?'your department(s)':'your tasks';
   let h=`<div class="ph"><div><h2>Task Dashboard</h2><p class="ph-sub">Overview of ${esc(scopeLabel)}</p></div>
   <div class="ph-act">${isTaskManagerRole()?`<button class="btn badd" onclick="taskForm()">+ New Task</button>`:''}<button class="btn bout" onclick="go('mytasks')">My Tasks</button></div></div>
   <div class="sg">
@@ -3647,7 +3650,8 @@ function refreshMyTasksIfOn(){if(stillOn('mytasks'))loadTasks({mine:true,view:my
 function refreshAllTasksIfOn(){if(stillOn('alltasks'))dAllTasks();}
 
 // ────────────────────────────────────
-//  ALL TASKS — admin (company-wide) / coordinator / manager (dept-wide)
+//  ALL TASKS — admin (company-wide) / coordinator (dept-wide) /
+//  manager (own assigned + own assigned-out tasks only, as of v2.1.5)
 //  management table: create, assign, reassign, archive, delete
 // ────────────────────────────────────
 let atSr='',atStatus='',atPriority='',atCategory='',atAssignee='',atDueDate='',atArchived=false;
